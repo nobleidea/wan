@@ -107,10 +107,7 @@ def modify_workflow(workflow: dict,
     # 3. Devolver el workflow modificado
     return workflow
         
-    except Exception as e:
-        print(f"❌ Error modifying workflow: {e}")
-        raise Exception(f"Failed to modify workflow: {e}")
-
+   
 def execute_workflow(workflow):
     """Ejecutar workflow en ComfyUI y esperar resultado"""
     try:
