@@ -28,8 +28,16 @@ RUN pip install --no-cache-dir --pre torch torchvision torchaudio \
 # Instalar dependencias base
 RUN pip install --no-cache-dir runpod websocket-client requests pillow opencv-python
 
-# Instalar dependencias adicionales para WAN nodes
-RUN pip install --no-cache-dir accelerate scikit-image numba omegaconf
+# Instalar dependencias adicionales para WAN nodes con versiones compatibles
+RUN pip install --no-cache-dir \
+    accelerate \
+    scikit-image \
+    numba \
+    omegaconf \
+    blend-modes \
+    piexif \
+    "diffusers>=0.21.0,<0.30.0" \
+    "huggingface_hub>=0.16.0,<0.20.0"
 
 # Instalar ComfyUI
 RUN pip install --no-cache-dir comfy-cli && \
