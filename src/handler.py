@@ -10,7 +10,7 @@ import threading
 from pathlib import Path
 
 # Configuración
-WORKSPACE_PATH = "/workspace"
+WORKSPACE_PATH = "/runpod-volume"
 COMFYUI_PATH = f"{WORKSPACE_PATH}/ComfyUI"
 WORKFLOW_PATH = "/app/workflow.json"
 COMFYUI_URL = "http://localhost:8188"
