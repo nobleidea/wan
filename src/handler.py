@@ -52,26 +52,60 @@ def save_base64_image(base64_string, filename):
         raise Exception(f"Failed to save input image: {e}")
 
 
-def modify_workflow(workflow, image_filename, prompt, negative_prompt):
-    """Modificar workflow con los parámetros del usuario"""
-    try:
-        # Nodo 294 - LoadImage (Input Image)
-        for node in workflow["nodes"]:
-            if node["id"] == 294 and node["type"] == "LoadImage":
+def modify_workflow(workflow: dict,
+                    image_filename: str,
+                    prompt: str,
+                    negative_prompt: str) -> dict:
+    """
+    Inserta la imagen y los prompts del usuario en los nodos del workflow.
+
+    Soporta tanto el formato “normal” (clave «nodes» con lista) como el formato
+    API (nodos en el nivel superior con su id como clave).
+    """
+
+    # 1. Determinar dónde están los nodos
+    if "nodes" in workflow and isinstance(workflow["nodes"], list):
+        # Formato ‘Guardar workflow’
+        node_iter = workflow["nodes"]
+    else:
+        # Formato API → los nodos están en las propias claves del dict
+        # Filtramos las entradas que realmente son nodos (dict con class_type)
+        node_iter = [
+            v for k, v in workflow.items()
+            if isinstance(v, dict) and "class_type" in v
+        ]
+
+    # 2. Recorrer y modificar
+    for node in node_iter:
+        node_id = str(node.get("id") or "")  # id puede no existir en API
+        class_type = node.get("type") or node.get("class_type")
+
+        # --- Nodo 294 – LoadImage ------------------------------------------------
+        if node_id == "294" and class_type == "LoadImage":
+            if "widgets_values" in node:                          # formato lista
                 node["widgets_values"][0] = image_filename
-                print(f"✅ Updated LoadImage node with: {image_filename}")
-            
-            # Nodo 243 - CLIPTextEncode (Positive Prompt) 
-            elif node["id"] == 243 and node["type"] == "CLIPTextEncode":
+            elif "inputs" in node and "image" in node["inputs"]:   # formato API
+                node["inputs"]["image"][0] = image_filename
+            print(f"✅ Updated LoadImage node with: {image_filename}")
+
+        # --- Nodo 243 – CLIPTextEncode (Prompt positivo) -------------------------
+        elif node_id == "243" and class_type == "CLIPTextEncode":
+            if "widgets_values" in node:
                 node["widgets_values"][0] = prompt
-                print(f"✅ Updated positive prompt: {prompt[:50]}...")
-            
-            # Nodo 244 - CLIPTextEncode (Negative Prompt)
-            elif node["id"] == 244 and node["type"] == "CLIPTextEncode":
+            elif "inputs" in node and "text" in node["inputs"]:
+                node["inputs"]["text"] = prompt
+            print(f"✅ Updated positive prompt: {prompt[:50]}...")
+
+        # --- Nodo 244 – CLIPTextEncode (Prompt negativo) -------------------------
+        elif node_id == "244" and class_type == "CLIPTextEncode":
+            if "widgets_values" in node:
                 node["widgets_values"][0] = negative_prompt
-                print(f"✅ Updated negative prompt: {negative_prompt[:50]}...")
-        
-        return workflow
+            elif "inputs" in node and "text" in node["inputs"]:
+                node["inputs"]["text"] = negative_prompt
+            print(f"✅ Updated negative prompt: {negative_prompt[:50]}...")
+
+    # 3. Devolver el workflow modificado
+    return workflow
         
     except Exception as e:
         print(f"❌ Error modifying workflow: {e}")
