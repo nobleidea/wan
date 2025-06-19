@@ -40,9 +40,9 @@ RUN pip install --no-cache-dir \
     einops \
     sentencepiece \
     fire \
-    "huggingface_hub>=0.16.0,<0.26.0" \
-    "diffusers>=0.21.0,<0.29.0" \
-    "transformers>=4.25.0,<4.37.0"
+    "huggingface_hub>=0.20.0,<0.30.0" \
+    "diffusers>=0.30.0,<0.35.0" \
+    "transformers>=4.37.0,<4.45.0"
 
 # Instalar ComfyUI
 RUN pip install --no-cache-dir comfy-cli && \
