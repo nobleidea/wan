@@ -18,7 +18,7 @@
     },
     "class_type": "VHS_VideoCombine",
     "_meta": {
-      "title": "Video Combine 🎥🅥🅗🅢"
+      "title": "Video Combine ðŸŽ¥ðŸ…¥ðŸ…—ðŸ…¢"
     }
   },
   "83": {
@@ -55,7 +55,7 @@
     },
     "class_type": "VHS_VideoCombine",
     "_meta": {
-      "title": "Video Combine 🎥🅥🅗🅢"
+      "title": "Video Combine ðŸŽ¥ðŸ…¥ðŸ…—ðŸ…¢"
     }
   },
   "95": {
@@ -77,7 +77,7 @@
     },
     "class_type": "VHS_VideoCombine",
     "_meta": {
-      "title": "Video Combine 🎥🅥🅗🅢"
+      "title": "Video Combine ðŸŽ¥ðŸ…¥ðŸ…—ðŸ…¢"
     }
   },
   "97": {
@@ -99,7 +99,7 @@
     },
     "class_type": "VHS_VideoCombine",
     "_meta": {
-      "title": "Video Combine 🎥🅥🅗🅢"
+      "title": "Video Combine ðŸŽ¥ðŸ…¥ðŸ…—ðŸ…¢"
     }
   },
   "98": {
@@ -200,7 +200,7 @@
     },
     "class_type": "GetImageSize+",
     "_meta": {
-      "title": "🔧 Get Image Size"
+      "title": "ðŸ”§ Get Image Size"
     }
   },
   "223": {
@@ -214,7 +214,7 @@
     },
     "class_type": "ImageFromBatch+",
     "_meta": {
-      "title": "🔧 Image From Batch"
+      "title": "ðŸ”§ Image From Batch"
     }
   },
   "224": {
@@ -224,7 +224,7 @@
         0
       ]
     },
-    "class_type": "ImageListToImageBatch",
+    "class_type": "Image List To Image Batch",
     "_meta": {
       "title": "Image List to Image Batch"
     }
@@ -295,7 +295,7 @@
         0
       ]
     },
-    "class_type": "CLIPVisionEncode",
+    "class_type": "CLIP Vision Encode",
     "_meta": {
       "title": "CLIP Vision Encode"
     }
@@ -308,7 +308,7 @@
         1
       ]
     },
-    "class_type": "CLIPTextEncode",
+    "class_type": "CLIP Text Encode",
     "_meta": {
       "title": "Codificar Texto CLIP (Prompt)"
     }
@@ -321,7 +321,7 @@
         1
       ]
     },
-    "class_type": "CLIPTextEncode",
+    "class_type": "CLIP Text Encode",
     "_meta": {
       "title": "Codificar Texto CLIP (Prompt)"
     }
@@ -392,7 +392,7 @@
     },
     "class_type": "ImageFromBatch+",
     "_meta": {
-      "title": "🔧 Image From Batch"
+      "title": "ðŸ”§ Image From Batch"
     }
   },
   "265": {
@@ -402,7 +402,7 @@
         0
       ]
     },
-    "class_type": "ImageListToImageBatch",
+    "class_type": "Image List To Image Batch",
     "_meta": {
       "title": "Image List to Image Batch"
     }
@@ -517,14 +517,14 @@
     },
     "class_type": "VAEDecode",
     "_meta": {
-      "title": "Decodificación VAE"
+      "title": "DecodificaciÃ³n VAE"
     }
   },
   "294": {
     "inputs": {
       "image": "ComfyUI_temp_xmpyd_00006_.png"
     },
-    "class_type": "LoadImage",
+    "class_type": "Load Image",
     "_meta": {
       "title": "Input Image"
     }
@@ -623,7 +623,7 @@
         "lora": "BouncyWalkV01.safetensors",
         "strength": 1
       },
-      "➕ Add Lora": "",
+      "âž• Add Lora": "",
       "model": [
         "276",
         0
