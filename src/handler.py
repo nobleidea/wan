@@ -15,22 +15,6 @@ COMFYUI_PATH = f"{WORKSPACE_PATH}/ComfyUI"
 WORKFLOW_PATH = "/app/workflow.json"
 COMFYUI_URL = "http://localhost:8188"
 
-# ❗ Función para chequear compatibilidad
-def verify_wanvideo_imports():
-    """Verificar que ComfyUI-WanVideoWrapper puede importarse correctamente"""
-    try:
-        print("🔍 Verifying WanVideoWrapper imports...")
-        sys.path.append(f'{COMFYUI_PATH}/custom_nodes/ComfyUI-WanVideoWrapper')
-        from wanvideo.modules.model import WanModel
-        from wanvideo.modules.clip import CLIPModel
-        print("✅ ComfyUI-WanVideoWrapper imports successful!")
-        return True
-    except ImportError as e:
-        print(f"❌ WanVideoWrapper import failed: {e}")
-        if "cached_download" in str(e):
-            print("💡 This is the cached_download issue - check dependency versions")
-        return False
-
 def check_models():
     """Verificar que los modelos estén disponibles en el network volume"""
     required_models = {
@@ -129,16 +113,10 @@ def generate_video(input_image_base64, prompt, negative_prompt=""):
     }
 
 def handler(event):
+    """Handler principal de RunPod"""
     try:
         print("🚀 Starting WAN 2.1 I2V serverless handler...")
-     
-         # AÑADIR SOLO ESTAS 6 LÍNEAS:
-        print("🔍 Checking WanVideoWrapper imports...")
-        if not verify_wanvideo_imports():
-            return {
-                "status": "error",
-                "message": "ComfyUI-WanVideoWrapper import failed - dependency version conflict"
-            }
+        
         # Verificar modelos
         print("🔍 Checking models...")
         check_models()
