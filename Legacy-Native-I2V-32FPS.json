@@ -1,0 +1,651 @@
+{
+  "80": {
+    "inputs": {
+      "frame_rate": 16,
+      "loop_count": 0,
+      "filename_prefix": "teacache",
+      "format": "video/h264-mp4",
+      "pix_fmt": "yuv420p",
+      "crf": 19,
+      "save_metadata": true,
+      "trim_to_audio": false,
+      "pingpong": false,
+      "save_output": true,
+      "images": [
+        "264",
+        0
+      ]
+    },
+    "class_type": "VHS_VideoCombine",
+    "_meta": {
+      "title": "Video Combine 🎥🅥🅗🅢"
+    }
+  },
+  "83": {
+    "inputs": {
+      "ckpt_name": "film_net_fp32.pt",
+      "clear_cache_after_n_frames": 10,
+      "multiplier": 2,
+      "frames": [
+        "98",
+        0
+      ]
+    },
+    "class_type": "FILM VFI",
+    "_meta": {
+      "title": "FILM VFI"
+    }
+  },
+  "94": {
+    "inputs": {
+      "frame_rate": 32,
+      "loop_count": 0,
+      "filename_prefix": "Hunyuan/videos/30/vid",
+      "format": "video/h264-mp4",
+      "pix_fmt": "yuv420p",
+      "crf": 19,
+      "save_metadata": true,
+      "trim_to_audio": false,
+      "pingpong": false,
+      "save_output": true,
+      "images": [
+        "83",
+        0
+      ]
+    },
+    "class_type": "VHS_VideoCombine",
+    "_meta": {
+      "title": "Video Combine 🎥🅥🅗🅢"
+    }
+  },
+  "95": {
+    "inputs": {
+      "frame_rate": 16,
+      "loop_count": 0,
+      "filename_prefix": "Hunyuan/videos/24/vid",
+      "format": "video/h264-mp4",
+      "pix_fmt": "yuv420p",
+      "crf": 19,
+      "save_metadata": true,
+      "trim_to_audio": false,
+      "pingpong": false,
+      "save_output": true,
+      "images": [
+        "98",
+        0
+      ]
+    },
+    "class_type": "VHS_VideoCombine",
+    "_meta": {
+      "title": "Video Combine 🎥🅥🅗🅢"
+    }
+  },
+  "97": {
+    "inputs": {
+      "frame_rate": 16,
+      "loop_count": 0,
+      "filename_prefix": "Hunyuan/videos/24/vid/up1",
+      "format": "video/h264-mp4",
+      "pix_fmt": "yuv420p",
+      "crf": 19,
+      "save_metadata": true,
+      "trim_to_audio": false,
+      "pingpong": false,
+      "save_output": true,
+      "images": [
+        "99",
+        0
+      ]
+    },
+    "class_type": "VHS_VideoCombine",
+    "_meta": {
+      "title": "Video Combine 🎥🅥🅗🅢"
+    }
+  },
+  "98": {
+    "inputs": {
+      "upscale_method": "lanczos",
+      "width": [
+        "220",
+        0
+      ],
+      "height": [
+        "219",
+        0
+      ],
+      "crop": "center",
+      "image": [
+        "99",
+        0
+      ]
+    },
+    "class_type": "ImageScale",
+    "_meta": {
+      "title": "Ampliar Imagen"
+    }
+  },
+  "99": {
+    "inputs": {
+      "image": [
+        "272",
+        0
+      ]
+    },
+    "class_type": "ImageUpscaleWithModel",
+    "_meta": {
+      "title": "Ampliar Imagen (usando Modelo)"
+    }
+  },
+  "154": {
+    "inputs": {
+      "model_name": "4xLSDIR.pth"
+    },
+    "class_type": "UpscaleModelLoader",
+    "_meta": {
+      "title": "Upscaler"
+    }
+  },
+  "155": {
+    "inputs": {
+      "UPSCALE_MODEL": [
+        "154",
+        0
+      ]
+    },
+    "class_type": "Anything Everywhere",
+    "_meta": {
+      "title": "Anything Everywhere"
+    }
+  },
+  "219": {
+    "inputs": {
+      "value": "a*b",
+      "a": [
+        "222",
+        1
+      ],
+      "b": [
+        "226",
+        0
+      ]
+    },
+    "class_type": "SimpleMath+",
+    "_meta": {
+      "title": "height"
+    }
+  },
+  "220": {
+    "inputs": {
+      "value": "a*b",
+      "a": [
+        "222",
+        0
+      ],
+      "b": [
+        "226",
+        0
+      ]
+    },
+    "class_type": "SimpleMath+",
+    "_meta": {
+      "title": "width"
+    }
+  },
+  "222": {
+    "inputs": {
+      "image": [
+        "223",
+        0
+      ]
+    },
+    "class_type": "GetImageSize+",
+    "_meta": {
+      "title": "🔧 Get Image Size"
+    }
+  },
+  "223": {
+    "inputs": {
+      "start": 0,
+      "length": 1,
+      "image": [
+        "224",
+        0
+      ]
+    },
+    "class_type": "ImageFromBatch+",
+    "_meta": {
+      "title": "🔧 Image From Batch"
+    }
+  },
+  "224": {
+    "inputs": {
+      "images": [
+        "289",
+        0
+      ]
+    },
+    "class_type": "ImageListToImageBatch",
+    "_meta": {
+      "title": "Image List to Image Batch"
+    }
+  },
+  "226": {
+    "inputs": {
+      "Number": "2"
+    },
+    "class_type": "Int",
+    "_meta": {
+      "title": "Upscale Factor"
+    }
+  },
+  "231": {
+    "inputs": {
+      "clip_name": "umt5_xxl_fp8_e4m3fn_scaled.safetensors",
+      "type": "wan",
+      "device": "cpu"
+    },
+    "class_type": "CLIPLoader",
+    "_meta": {
+      "title": "Cargar CLIP"
+    }
+  },
+  "232": {
+    "inputs": {
+      "vae_name": "wan_2.1_vae.safetensors"
+    },
+    "class_type": "VAELoader",
+    "_meta": {
+      "title": "Cargar VAE"
+    }
+  },
+  "233": {
+    "inputs": {
+      "clip_name": "clip_vision_h.safetensors"
+    },
+    "class_type": "CLIPVisionLoader",
+    "_meta": {
+      "title": "Cargar CLIP Vision"
+    }
+  },
+  "236": {
+    "inputs": {
+      "width": 480,
+      "height": 832,
+      "length": 65,
+      "batch_size": 1,
+      "clip_vision_output": [
+        "239",
+        0
+      ],
+      "start_image": [
+        "294",
+        0
+      ]
+    },
+    "class_type": "WanImageToVideo",
+    "_meta": {
+      "title": "Set Video Length/Width/Height WanImageToVideo"
+    }
+  },
+  "239": {
+    "inputs": {
+      "crop": "none",
+      "image": [
+        "294",
+        0
+      ]
+    },
+    "class_type": "CLIPVisionEncode",
+    "_meta": {
+      "title": "CLIP Vision Encode"
+    }
+  },
+  "243": {
+    "inputs": {
+      "text": "An epic video showing a beautiful woman with deep plunge red dress slowly walking towards the viewer as her breasts are bouncing, she elegantly smiles",
+      "clip": [
+        "302",
+        1
+      ]
+    },
+    "class_type": "CLIPTextEncode",
+    "_meta": {
+      "title": "Codificar Texto CLIP (Prompt)"
+    }
+  },
+  "244": {
+    "inputs": {
+      "text": "Overexposure, static, blurred details, subtitles, paintings, pictures, still, overall gray, worst quality, low quality, JPEG compression residue, ugly, mutilated, redundant fingers, poorly painted hands, poorly painted faces, deformed, disfigured, deformed limbs, fused fingers, cluttered background, three legs, a lot of people in the background, upside down",
+      "clip": [
+        "302",
+        1
+      ]
+    },
+    "class_type": "CLIPTextEncode",
+    "_meta": {
+      "title": "Codificar Texto CLIP (Prompt)"
+    }
+  },
+  "245": {
+    "inputs": {
+      "CONDITIONING": [
+        "244",
+        0
+      ]
+    },
+    "class_type": "Prompts Everywhere",
+    "_meta": {
+      "title": "Prompts Everywhere"
+    }
+  },
+  "259": {
+    "inputs": {
+      "seed": 619075667137823,
+      "steps": 18,
+      "cfg": 5,
+      "sampler_name": "euler",
+      "scheduler": "normal",
+      "denoise": 1,
+      "model": [
+        "260",
+        0
+      ],
+      "positive": [
+        "236",
+        0
+      ],
+      "negative": [
+        "236",
+        1
+      ],
+      "latent_image": [
+        "236",
+        2
+      ]
+    },
+    "class_type": "KSampler",
+    "_meta": {
+      "title": "KSampler"
+    }
+  },
+  "260": {
+    "inputs": {
+      "shift": 5.000000000000001,
+      "model": [
+        "301",
+        0
+      ]
+    },
+    "class_type": "ModelSamplingSD3",
+    "_meta": {
+      "title": "Shift"
+    }
+  },
+  "264": {
+    "inputs": {
+      "start": 6,
+      "length": -1,
+      "image": [
+        "265",
+        0
+      ]
+    },
+    "class_type": "ImageFromBatch+",
+    "_meta": {
+      "title": "🔧 Image From Batch"
+    }
+  },
+  "265": {
+    "inputs": {
+      "images": [
+        "289",
+        0
+      ]
+    },
+    "class_type": "ImageListToImageBatch",
+    "_meta": {
+      "title": "Image List to Image Batch"
+    }
+  },
+  "266": {
+    "inputs": {
+      "anything": [
+        "264",
+        0
+      ]
+    },
+    "class_type": "easy cleanGpuUsed",
+    "_meta": {
+      "title": "Clean VRAM Used"
+    }
+  },
+  "272": {
+    "inputs": {
+      "upscale_method": "lanczos",
+      "scale_by": 0.5,
+      "image": [
+        "266",
+        0
+      ]
+    },
+    "class_type": "ImageScaleBy",
+    "_meta": {
+      "title": "Ampliar Imagen Por"
+    }
+  },
+  "276": {
+    "inputs": {
+      "model": [
+        "295",
+        0
+      ]
+    },
+    "class_type": "ModelPassThrough",
+    "_meta": {
+      "title": "ModelPass"
+    }
+  },
+  "280": {
+    "inputs": {
+      "CLIP_VISION": [
+        "233",
+        0
+      ]
+    },
+    "class_type": "Anything Everywhere",
+    "_meta": {
+      "title": "Anything Everywhere"
+    }
+  },
+  "281": {
+    "inputs": {
+      "VAE": [
+        "232",
+        0
+      ]
+    },
+    "class_type": "Anything Everywhere",
+    "_meta": {
+      "title": "Anything Everywhere"
+    }
+  },
+  "282": {
+    "inputs": {
+      "CLIP": [
+        "231",
+        0
+      ]
+    },
+    "class_type": "Anything Everywhere",
+    "_meta": {
+      "title": "Anything Everywhere"
+    }
+  },
+  "287": {
+    "inputs": {
+      "blocks": "9",
+      "start_percent": 0.20000000000000004,
+      "end_percent": 0.7000000000000002,
+      "model": [
+        "303",
+        0
+      ]
+    },
+    "class_type": "SkipLayerGuidanceWanVideo",
+    "_meta": {
+      "title": "Skip Layer Guidance WanVideo"
+    }
+  },
+  "289": {
+    "inputs": {
+      "image": [
+        "290",
+        0
+      ]
+    },
+    "class_type": "ImagePass",
+    "_meta": {
+      "title": "ImagePass"
+    }
+  },
+  "290": {
+    "inputs": {
+      "samples": [
+        "259",
+        0
+      ]
+    },
+    "class_type": "VAEDecode",
+    "_meta": {
+      "title": "Decodificación VAE"
+    }
+  },
+  "294": {
+    "inputs": {
+      "image": "ComfyUI_temp_xmpyd_00006_.png"
+    },
+    "class_type": "LoadImage",
+    "_meta": {
+      "title": "Input Image"
+    }
+  },
+  "295": {
+    "inputs": {
+      "rel_l1_thresh": 0.15000000000000002,
+      "start_percent": 0.3500000000000001,
+      "end_percent": 0.8500000000000002,
+      "cache_device": "offload_device",
+      "coefficients": "i2v_480",
+      "model": [
+        "287",
+        0
+      ]
+    },
+    "class_type": "WanVideoTeaCacheKJ",
+    "_meta": {
+      "title": "WanVideo Tea Cache (native)"
+    }
+  },
+  "301": {
+    "inputs": {
+      "model": [
+        "302",
+        0
+      ]
+    },
+    "class_type": "ModelPassThrough",
+    "_meta": {
+      "title": "ModelPass"
+    }
+  },
+  "302": {
+    "inputs": {
+      "PowerLoraLoaderHeaderWidget": {
+        "type": "PowerLoraLoaderHeaderWidget"
+      },
+      "lora_1": {
+        "on": false,
+        "lora": "I2V-tittydrop-e26.safetensors",
+        "strength": 1
+      },
+      "lora_2": {
+        "on": false,
+        "lora": "P004-Lying-Bouncing-i2v-v10-000010.safetensors",
+        "strength": 1
+      },
+      "lora_3": {
+        "on": false,
+        "lora": "deepthroat_epoch_80.safetensors",
+        "strength": 0.7999999999999997
+      },
+      "lora_4": {
+        "on": false,
+        "lora": "detailz-wan.safetensors",
+        "strength": 1
+      },
+      "lora_5": {
+        "on": false,
+        "lora": "dicks_epoch_100.safetensors",
+        "strength": 1
+      },
+      "lora_6": {
+        "on": false,
+        "lora": "doggyPOV_v1_1.safetensors",
+        "strength": 1
+      },
+      "lora_7": {
+        "on": false,
+        "lora": "erect_penis_epoch_80.safetensors",
+        "strength": 0.6
+      },
+      "lora_8": {
+        "on": false,
+        "lora": "wan_female_masturbation.safetensors",
+        "strength": 1
+      },
+      "lora_9": {
+        "on": false,
+        "lora": "wan_pov_blowjob.safetensors",
+        "strength": 0.9
+      },
+      "lora_10": {
+        "on": false,
+        "lora": "woman_undressing_v1.0_wan14b_epoch048.safetensors",
+        "strength": 0.9
+      },
+      "lora_11": {
+        "on": false,
+        "lora": "epoch60.safetensors",
+        "strength": 0.9
+      },
+      "lora_12": {
+        "on": false,
+        "lora": "BouncyWalkV01.safetensors",
+        "strength": 1
+      },
+      "➕ Add Lora": "",
+      "model": [
+        "276",
+        0
+      ]
+    },
+    "class_type": "Power Lora Loader (rgthree)",
+    "_meta": {
+      "title": "Power Lora Loader (rgthree)"
+    }
+  },
+  "303": {
+    "inputs": {
+      "model_name": "wan2.1_i2v_480p_14B_bf16.safetensors",
+      "weight_dtype": "default",
+      "compute_dtype": "default",
+      "patch_cublaslinear": false,
+      "sage_attention": "sageattn_qk_int8_pv_fp16_cuda",
+      "enable_fp16_accumulation": true
+    },
+    "class_type": "DiffusionModelLoaderKJ",
+    "_meta": {
+      "title": "Diffusion Model Loader KJ"
+    }
+  }
+}
