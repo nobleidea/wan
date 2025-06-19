@@ -224,7 +224,7 @@
         0
       ]
     },
-    "class_type": "Image List To Image Batch",
+    "class_type": "Image List To Batch",
     "_meta": {
       "title": "Image List to Image Batch"
     }
