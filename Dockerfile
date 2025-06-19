@@ -44,6 +44,12 @@ RUN pip install --no-cache-dir \
     "diffusers>=0.30.0,<0.35.0" \
     "transformers>=4.37.0,<4.45.0"
 
+#  EXTRA para que Impact-Pack cargue
+RUN pip install --no-cache-dir \
+    git+https://github.com/facebookresearch/segment-anything.git@75f015d \
+    onnxruntime-gpu==1.18.0 \
+    opencv-contrib-python-headless==4.10.0.80
+
 # Instalar ComfyUI
 RUN pip install --no-cache-dir comfy-cli && \
     /usr/bin/yes | comfy --workspace /ComfyUI install
