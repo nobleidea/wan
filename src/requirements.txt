@@ -4,3 +4,5 @@ pillow
 opencv-python
 websocket-client
 numpy
+uuid
+Pillow
