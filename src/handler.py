@@ -44,31 +44,55 @@ def start_comfyui():
     if not os.path.exists("/ComfyUI"):
         os.symlink(COMFYUI_PATH, "/ComfyUI")
     
+    print(f"📂 Changing directory to: {COMFYUI_PATH}")
     os.chdir(COMFYUI_PATH)
     
+    # Verificar que main.py existe
+    if not os.path.exists("main.py"):
+        raise Exception(f"❌ main.py not found in {COMFYUI_PATH}")
+    
+    print("🔧 Starting ComfyUI process...")
     cmd = [
         "python", "main.py", 
         "--listen", "0.0.0.0",
-        "--port", "8188",
-        "--use-sage-attention"
+        "--port", "8188"
     ]
     
-    def run_comfyui():
-        subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    print(f"🚀 Command: {' '.join(cmd)}")
     
-    thread = threading.Thread(target=run_comfyui, daemon=True)
+    # Iniciar ComfyUI con logs visibles
+    process = subprocess.Popen(
+        cmd, 
+        stdout=subprocess.PIPE, 
+        stderr=subprocess.STDOUT,
+        text=True,
+        bufsize=1
+    )
+    
+    # Mostrar logs en tiempo real
+    def show_logs():
+        for line in process.stdout:
+            print(f"ComfyUI: {line.strip()}")
+    
+    thread = threading.Thread(target=show_logs, daemon=True)
     thread.start()
     
     # Esperar a que ComfyUI esté listo
-    for i in range(300):  # 5 minutos timeout
+    print("⏳ Waiting for ComfyUI to be ready...")
+    for i in range(300):  # 5 minutos
         try:
             response = requests.get(f"{COMFYUI_URL}/history", timeout=5)
             if response.status_code == 200:
                 print("✅ ComfyUI is ready!")
                 return True
-        except:
-            pass
+        except Exception as e:
+            if i % 30 == 0:  # Log cada 30 segundos
+                print(f"⏳ Still waiting... ({i//60}m {i%60}s) - {e}")
         time.sleep(1)
+    
+    print("❌ ComfyUI logs:")
+    if process.poll() is not None:
+        print(f"Process exited with code: {process.returncode}")
     
     raise Exception("❌ ComfyUI failed to start within 5 minutes")
 
