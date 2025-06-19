@@ -24,7 +24,14 @@ def save_base64_image(base64_string, filename):
         # Remover el prefijo data:image si existe
         if ',' in base64_string:
             base64_string = base64_string.split(',')[1]
-        
+
+        # --- INICIO DE LA CORRECCIÓN ---
+        # Añadir padding si es necesario para evitar el error "Incorrect padding"
+        missing_padding = len(base64_string) % 4
+        if missing_padding:
+            base64_string += '=' * (4 - missing_padding)
+        # --- FIN DE LA CORRECCIÓN ---
+
         # Decodificar base64
         image_data = base64.b64decode(base64_string)
         
@@ -43,6 +50,7 @@ def save_base64_image(base64_string, filename):
     except Exception as e:
         print(f"❌ Error saving image: {e}")
         raise Exception(f"Failed to save input image: {e}")
+
 
 def modify_workflow(workflow, image_filename, prompt, negative_prompt):
     """Modificar workflow con los parámetros del usuario"""
