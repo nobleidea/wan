@@ -203,19 +203,21 @@ def generate_video(input_image_base64, prompt, negative_prompt=""):
         if not output_files:
             raise Exception("No output files generated")
         
-        # 4. Convertir outputs a base64
-        print("📦 Processing output files...")
+        # 4. Crear URLs de descarga
+        print("🔗 Creating download URLs...")
         results = []
         
         for output_file in output_files:
-            base64_data = file_to_base64(output_file["path"])
-            if base64_data:
-                results.append({
-                    "type": output_file["type"],
-                    "filename": output_file["filename"], 
-                    "data": base64_data,
-                    "node_id": output_file["node_id"]
-                })
+            # Crear URL de descarga directa
+            download_url = f"https://your-runpod-id.runpod.io/download/{output_file['filename']}"
+            
+            results.append({
+                "type": output_file["type"],
+                "filename": output_file["filename"],
+                "download_url": download_url,
+                "file_size": get_file_size(output_file["path"]),
+                "node_id": output_file["node_id"]
+            })
         
         print(f"✅ Video generation completed! Generated {len(results)} files")
         
@@ -232,6 +234,42 @@ def generate_video(input_image_base64, prompt, negative_prompt=""):
             "status": "error",
             "message": str(e)
         }
+
+def get_file_size(file_path):
+    """Obtener tamaño del archivo en MB"""
+    try:
+        size_bytes = os.path.getsize(file_path)
+        size_mb = round(size_bytes / (1024 * 1024), 2)
+        return f"{size_mb} MB"
+    except:
+        return "Unknown"
+
+def setup_download_endpoint():
+    """Configurar endpoint de descarga"""
+    from flask import Flask, send_file, abort
+    
+    app = Flask(__name__)
+    
+    @app.route('/download/<filename>')
+    def download_file(filename):
+        try:
+            file_path = f"{COMFYUI_PATH}/output/{filename}"
+            if os.path.exists(file_path):
+                return send_file(file_path, as_attachment=True)
+            else:
+                abort(404)
+        except Exception as e:
+            print(f"Download error: {e}")
+            abort(500)
+    
+    # Iniciar servidor Flask en background
+    import threading
+    server_thread = threading.Thread(
+        target=lambda: app.run(host='0.0.0.0', port=8080, debug=False)
+    )
+    server_thread.daemon = True
+    server_thread.start()
+    print("📁 Download server started on port 8080")
 
 # ... resto de funciones (check_models, start_comfyui, handler) sin cambios
 
