@@ -1,0 +1,6 @@
+runpod
+requests
+pillow
+opencv-python
+websocket-client
+numpy
