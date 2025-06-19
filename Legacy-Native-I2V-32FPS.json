@@ -121,7 +121,7 @@
     },
     "class_type": "ImageScale",
     "_meta": {
-      "title": "Ampliar Imagen"
+      "title": "Upscale Image"
     }
   },
   "99": {
@@ -133,7 +133,7 @@
     },
     "class_type": "ImageUpscaleWithModel",
     "_meta": {
-      "title": "Ampliar Imagen (usando Modelo)"
+      "title": "Upscale Image (using Model)"
     }
   },
   "154": {
@@ -224,7 +224,7 @@
         0
       ]
     },
-    "class_type": "Image List To Batch",
+    "class_type": "ImageListToImageBatch",
     "_meta": {
       "title": "Image List to Image Batch"
     }
@@ -246,7 +246,7 @@
     },
     "class_type": "CLIPLoader",
     "_meta": {
-      "title": "Cargar CLIP"
+      "title": "Load CLIP"
     }
   },
   "232": {
@@ -255,7 +255,7 @@
     },
     "class_type": "VAELoader",
     "_meta": {
-      "title": "Cargar VAE"
+      "title": "Load VAE"
     }
   },
   "233": {
@@ -264,7 +264,7 @@
     },
     "class_type": "CLIPVisionLoader",
     "_meta": {
-      "title": "Cargar CLIP Vision"
+      "title": "Load CLIP Vision"
     }
   },
   "236": {
@@ -295,7 +295,7 @@
         0
       ]
     },
-    "class_type": "CLIP Vision Encode",
+    "class_type": "CLIPVisionEncode",
     "_meta": {
       "title": "CLIP Vision Encode"
     }
@@ -308,9 +308,9 @@
         1
       ]
     },
-    "class_type": "CLIP Text Encode",
+    "class_type": "CLIPTextEncode",
     "_meta": {
-      "title": "Codificar Texto CLIP (Prompt)"
+      "title": "CLIP Text Encode (Prompt)"
     }
   },
   "244": {
@@ -321,9 +321,9 @@
         1
       ]
     },
-    "class_type": "CLIP Text Encode",
+    "class_type": "CLIPTextEncode",
     "_meta": {
-      "title": "Codificar Texto CLIP (Prompt)"
+      "title": "CLIP Text Encode (Prompt)"
     }
   },
   "245": {
@@ -340,7 +340,7 @@
   },
   "259": {
     "inputs": {
-      "seed": 619075667137823,
+      "seed": 204677357738769,
       "steps": 18,
       "cfg": 5,
       "sampler_name": "euler",
@@ -402,7 +402,7 @@
         0
       ]
     },
-    "class_type": "Image List To Image Batch",
+    "class_type": "ImageListToImageBatch",
     "_meta": {
       "title": "Image List to Image Batch"
     }
@@ -430,7 +430,7 @@
     },
     "class_type": "ImageScaleBy",
     "_meta": {
-      "title": "Ampliar Imagen Por"
+      "title": "Upscale Image By"
     }
   },
   "276": {
@@ -517,14 +517,14 @@
     },
     "class_type": "VAEDecode",
     "_meta": {
-      "title": "DecodificaciÃ³n VAE"
+      "title": "VAE Decode"
     }
   },
   "294": {
     "inputs": {
-      "image": "ComfyUI_temp_xmpyd_00006_.png"
+      "image": "sample (7).png"
     },
-    "class_type": "Load Image",
+    "class_type": "LoadImage",
     "_meta": {
       "title": "Input Image"
     }
