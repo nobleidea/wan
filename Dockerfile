@@ -36,6 +36,10 @@ RUN pip install --no-cache-dir \
     omegaconf \
     blend-modes \
     piexif \
+    ftfy \
+    einops \
+    sentencepiece \
+    fire \
     "huggingface_hub>=0.16.0,<0.26.0" \
     "diffusers>=0.21.0,<0.29.0" \
     "transformers>=4.25.0,<4.37.0"
