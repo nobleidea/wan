@@ -60,7 +60,7 @@ def start_comfyui():
     thread.start()
     
     # Esperar a que ComfyUI esté listo
-    for i in range(120):  # 2 minutos timeout
+    for i in range(300):  # 5 minutos timeout
         try:
             response = requests.get(f"{COMFYUI_URL}/history", timeout=5)
             if response.status_code == 200:
@@ -70,7 +70,7 @@ def start_comfyui():
             pass
         time.sleep(1)
     
-    raise Exception("❌ ComfyUI failed to start within 2 minutes")
+    raise Exception("❌ ComfyUI failed to start within 5 minutes")
 
 def generate_video(input_image_base64, prompt, negative_prompt=""):
     """Generar video usando el workflow"""
