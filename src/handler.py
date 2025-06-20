@@ -367,7 +367,7 @@ def check_models():
     return True
 
 def start_comfyui():
-     """Iniciar ComfyUI server o verificar si ya está ejecutándose"""
+    """Iniciar ComfyUI server o verificar si ya está ejecutándose"""
     # 🔥 NUEVO: Verificar si ComfyUI ya está ejecutándose
     try:
         response = requests.get(f"{COMFYUI_URL}/history", timeout=5)
