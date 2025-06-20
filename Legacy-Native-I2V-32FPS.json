@@ -608,7 +608,7 @@
       "weight_dtype": "default",
       "compute_dtype": "default",
       "patch_cublaslinear": false,
-      "sage_attention": "sageattn_qk_int8_pv_fp16_cuda",
+      "sage_attention": "disabled",
       "enable_fp16_accumulation": true
     },
     "class_type": "DiffusionModelLoaderKJ",
