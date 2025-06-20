@@ -57,35 +57,46 @@ def modify_workflow(workflow: dict,
                     prompt: str,
                     negative_prompt: str) -> dict:
     """
-    Inserta la imagen y los prompts del usuario en los nodos del workflow.
-
-    Soporta tanto el formato “normal” (clave «nodes» con lista) como el formato
+    Inserta la imagen, prompts y seed único en los nodos del workflow.
+    Soporta tanto el formato "normal" (clave «nodes» con lista) como el formato
     API (nodos en el nivel superior con su id como clave).
-    """            
-
+    """
+    import time
+    
+    # Generar seed único
+    unique_seed = int(time.time() * 1000) % 2147483647
+    print(f"🎲 Generated unique seed: {unique_seed}")
+    
     # 1. Determinar dónde están los nodos
     if "nodes" in workflow and isinstance(workflow["nodes"], list):
-        # Formato ‘Guardar workflow’
+        # Formato 'Guardar workflow'
         node_iter = workflow["nodes"]
     else:
         # Formato API → los nodos están en las propias claves del dict
-        # Filtramos las entradas que realmente son nodos (dict con class_type)
         node_iter = [
             v for k, v in workflow.items()
             if isinstance(v, dict) and "class_type" in v
         ]
 
-    # 2. Recorrer y modificar
+    # 2. Recorrer y modificar UNA SOLA VEZ
     for node in node_iter:
-        node_id = str(node.get("id") or "")  # id puede no existir en API
+        node_id = str(node.get("id") or "")
         class_type = node.get("type") or node.get("class_type")
 
+        # --- KSampler (Actualizar seed) ------------------------------------------
+        if class_type == "KSampler":
+            if "widgets_values" in node:
+                node["widgets_values"][0] = unique_seed
+            elif "inputs" in node and "seed" in node["inputs"]:
+                node["inputs"]["seed"] = unique_seed
+            print(f"✅ Updated KSampler seed to: {unique_seed}")
+
         # --- Nodo 294 – LoadImage ------------------------------------------------
-        if node_id == "294" and class_type == "LoadImage":
-            if "widgets_values" in node:                          # formato lista
+        elif node_id == "294" and class_type == "LoadImage":
+            if "widgets_values" in node:
                 node["widgets_values"][0] = image_filename
-            elif "inputs" in node and "image" in node["inputs"]:   # formato API
-                node["inputs"]["image"][0] = image_filename
+            elif "inputs" in node and "image" in node["inputs"]:
+                node["inputs"]["image"] = image_filename
             print(f"✅ Updated LoadImage node with: {image_filename}")
 
         # --- Nodo 243 – CLIPTextEncode (Prompt positivo) -------------------------
