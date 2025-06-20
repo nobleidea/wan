@@ -1,72 +1,94 @@
-##############################################################################
-# WAN 2.1 I2V – Dockerfile PARA RUNPOD SERVERLESS (funciona con Python 3.12)
-##############################################################################
+# Updated handler path - rebuild trigger
+# Dockerfile optimizado para WAN 2.1 I2V Serverless
 FROM nvidia/cuda:12.8.1-cudnn-devel-ubuntu24.04 AS base
 
-# ────────────── env ───────────────
 ENV DEBIAN_FRONTEND=noninteractive \
-    PIP_NO_CACHE_DIR=1 \
+    PIP_PREFER_BINARY=1 \
     PYTHONUNBUFFERED=1 \
-    GIT_PYTHON_REFRESH=quiet \
+    PYTHONDONTWRITEBYTECODE=1 \
     PATH="/opt/venv/bin:$PATH"
 
-# ───── sistema + python 3.12 + git (NO se purga) ─────
-RUN apt-get update && \
-    apt-get install -y --no-install-recommends \
-        python3.12 python3.12-venv python3.12-dev python3-pip \
-        git curl wget ffmpeg build-essential libgl1 libglib2.0-0 && \
-    python3.12 -m venv /opt/venv && \
-    ln -sf /usr/bin/python3.12 /usr/local/bin/python && \
-    python -m pip install --upgrade pip
+# Instalar dependencias del sistema en pasos separados
+RUN apt-get update
 
-# ───── torch nightly cu128 (wheels cp312) ─────
-RUN pip install --pre torch torchvision torchaudio \
+RUN apt-get install -y --no-install-recommends \
+    python3.12 python3.12-venv python3.12-dev python3-pip
+
+RUN apt-get install -y --no-install-recommends \
+    curl git wget vim libgl1 libglib2.0-0 build-essential
+
+RUN ln -sf /usr/bin/python3.12 /usr/bin/python && \
+    python3.12 -m venv /opt/venv && \
+    apt-get clean && rm -rf /var/lib/apt/lists/*
+
+# Instalar PyTorch
+RUN pip install --no-cache-dir --pre torch torchvision torchaudio \
         --index-url https://download.pytorch.org/whl/nightly/cu128
 
-# ───── runtime libs iguales al Pod (sin fijar OpenCV) ─────
-RUN pip install packaging setuptools wheel \
-                 pyyaml gdown triton comfy-cli \
-                 websocket-client requests pillow
+# Instalar dependencias base
+# Instalar dependencias base (quitamos opencv-python, ponemos la versión compatible)
+RUN pip install --no-cache-dir \
+    runpod \
+    websocket-client \
+    requests \
+    pillow \
+    opencv-contrib-python-headless==4.11.0.86   # wheel cp312 disponible
 
-# ───── ComfyUI core ─────
-RUN yes | comfy --workspace /ComfyUI install
+# Instalar dependencias adicionales para WAN nodes con versiones compatibles
+RUN pip install --no-cache-dir \
+    accelerate \
+    scikit-image \
+    numba \
+    omegaconf \
+    blend-modes \
+    piexif \
+    ftfy \
+    einops \
+    sentencepiece \
+    fire \
+    "huggingface_hub>=0.20.0,<0.30.0" \
+    "diffusers>=0.30.0,<0.35.0" \
+    "transformers>=4.37.0,<4.45.0"
 
-##############################################################################
-# segunda etapa: plugins, SAM, etc.
-##############################################################################
-FROM base AS final
-ENV PATH="/opt/venv/bin:$PATH"
+# ─── Impact-Pack deps: Segment-Anything + ONNX Runtime ───
+# Dependencias para Impact-Pack
+RUN pip install --no-cache-dir \
+    git+https://github.com/facebookresearch/segment-anything.git@6325eb80 \
+    onnxruntime-gpu==1.18.0
 
-# 1️⃣  OpenCV wheel cp312 (igual que Pod)
-RUN pip install opencv-python      # ← resuelve a 4.11.0.86 cp312
+# Instalar ComfyUI
+RUN pip install --no-cache-dir comfy-cli && \
+    /usr/bin/yes | comfy --workspace /ComfyUI install
 
-# 2️⃣  (opcional) Segment-Anything + ONNX-GPU  
-#     *solo* si tus flujos lo necesitan; si no, omite todo el bloque
-RUN curl -L -o /tmp/sam.tar.gz \
-        https://codeload.github.com/facebookresearch/segment-anything/tar.gz/6325eb80 && \
-    pip install /tmp/sam.tar.gz onnxruntime-gpu==1.18.0 && \
-    rm /tmp/sam.tar.gz
+# Instalar custom nodes uno por uno
+RUN cd /ComfyUI/custom_nodes && \
+    git clone https://github.com/kijai/ComfyUI-KJNodes.git
 
-# 3️⃣  clonar nodos (idéntico al Pod)
-RUN set -eux; cd /ComfyUI/custom_nodes && \
-    for repo in \
-        https://github.com/kijai/ComfyUI-KJNodes.git \
-        https://github.com/cubiq/ComfyUI_essentials.git \
-        https://github.com/Kosinkadink/ComfyUI-VideoHelperSuite.git \
-        https://github.com/Fannovel16/ComfyUI-Frame-Interpolation.git \
-        https://github.com/chrisgoringe/cg-use-everywhere.git \
-        https://github.com/rgthree/rgthree-comfy.git \
-        https://github.com/M1kep/ComfyLiterals.git \
-        https://github.com/ltdrdata/ComfyUI-Impact-Pack.git \
-        https://github.com/yolain/ComfyUI-Easy-Use.git ; \
-    do \
-        git clone "$repo"; \
-        req="/ComfyUI/custom_nodes/$(basename "$repo" .git)/requirements.txt"; \
-        [ -f "$req" ] && pip install -r "$req" || true ; \
-    done
+RUN cd /ComfyUI/custom_nodes && \
+    git clone https://github.com/cubiq/ComfyUI_essentials.git
 
-# 4️⃣  tu handler
+RUN cd /ComfyUI/custom_nodes && \
+    git clone https://github.com/Kosinkadink/ComfyUI-VideoHelperSuite.git
+
+RUN cd /ComfyUI/custom_nodes && \
+    git clone https://github.com/Fannovel16/ComfyUI-Frame-Interpolation.git
+
+RUN cd /ComfyUI/custom_nodes && \
+    git clone https://github.com/chrisgoringe/cg-use-everywhere.git && \
+    git clone https://github.com/rgthree/rgthree-comfy.git && \
+    git clone https://github.com/M1kep/ComfyLiterals.git && \
+    git clone https://github.com/ltdrdata/ComfyUI-Impact-Pack.git && \
+    git clone https://github.com/yolain/ComfyUI-Easy-Use.git
+
+# Instalar requirements
+RUN pip install --no-cache-dir -r /ComfyUI/custom_nodes/ComfyUI-KJNodes/requirements.txt || true
+RUN pip install --no-cache-dir -r /ComfyUI/custom_nodes/ComfyUI-VideoHelperSuite/requirements.txt || true
+RUN pip install --no-cache-dir -r /ComfyUI/custom_nodes/ComfyUI-Frame-Interpolation/requirements.txt || true
+
+# Copiar archivos
 COPY src/ /app/
+COPY Legacy-Native-I2V-32FPS.json /app/workflow.json
 WORKDIR /app
+
 CMD ["python", "handler.py"]
 
