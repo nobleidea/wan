@@ -106,8 +106,65 @@ def modify_workflow(workflow: dict,
 
     # 3. Devolver el workflow modificado
     return workflow
+
+# 🔥 NUEVA FUNCIÓN - Mapear nodos para arreglar error con algunos nodos
+def _ensure_defaults(workflow: dict) -> dict:
+    """Conectar automáticamente los modelos que faltan en el workflow"""
+    print("🔗 Ensuring default model connections...")
+    
+    # Mapeo de conexiones desde tu workflow específico
+    default_connections = {
+        "clip_vision": ["233", 0],    # CLIPVisionLoader -> CLIPVisionEncode
+        "vae": ["232", 0],            # VAELoader -> VAEDecode y WanImageToVideo
+        "clip": ["302", 1],           # Power Lora Loader -> CLIPTextEncode
+        "upscale_model": ["154", 0]   # UpscaleModelLoader -> ImageUpscaleWithModel
+    }
+    
+    # Recorrer todos los nodos del workflow
+    for node_id, node in workflow.items():
+        if not isinstance(node, dict) or "class_type" not in node:
+            continue
+            
+        class_type = node.get("class_type")
+        if "inputs" not in node:
+            continue
+            
+        inputs = node["inputs"]
         
-   
+        # Conectar según el tipo de nodo
+        if class_type == "CLIPVisionEncode":
+            if "clip_vision" not in inputs:
+                inputs["clip_vision"] = default_connections["clip_vision"]
+                print(f"✅ Connected CLIP Vision to node {node_id}")
+                
+        elif class_type == "CLIPTextEncode":
+            if "clip" not in inputs:
+                inputs["clip"] = default_connections["clip"]
+                print(f"✅ Connected CLIP to node {node_id}")
+                
+        elif class_type == "WanImageToVideo":
+            if "vae" not in inputs:
+                inputs["vae"] = default_connections["vae"]
+                print(f"✅ Connected VAE to WanImageToVideo node {node_id}")
+            # También asegurar que tenga prompts
+            if "positive" not in inputs:
+                inputs["positive"] = ["243", 0]  # Desde tu nodo de prompt positivo
+            if "negative" not in inputs:
+                inputs["negative"] = ["244", 0]  # Desde tu nodo de prompt negativo
+                
+        elif class_type == "VAEDecode":
+            if "vae" not in inputs:
+                inputs["vae"] = default_connections["vae"]
+                print(f"✅ Connected VAE to VAEDecode node {node_id}")
+                
+        elif class_type == "ImageUpscaleWithModel":
+            if "upscale_model" not in inputs:
+                inputs["upscale_model"] = default_connections["upscale_model"]
+                print(f"✅ Connected upscale model to node {node_id}")
+    
+    return workflow
+
+
 def execute_workflow(workflow):
     """Ejecutar workflow en ComfyUI y esperar resultado"""
     try:
@@ -234,10 +291,14 @@ def generate_video(input_image_base64, prompt, negative_prompt=""):
             workflow = json.load(f)
         
         modified_workflow = modify_workflow(workflow, saved_filename, prompt, negative_prompt)
+
+        # 🔥 NUEVA LÍNEA - AÑADIR AQUÍ
+        # 2B Asegurar conexiones de modelos
+        final_workflow = _ensure_defaults(modified_workflow)
         
         # 3. Ejecutar workflow
         print("⚡ Executing workflow...")
-        output_files = execute_workflow(modified_workflow)
+        output_files = execute_workflow(final_workflow) #Ejecutamos el workflow que hemos pasado por _ensure_defaults
         
         if not output_files:
             raise Exception("No output files generated")
