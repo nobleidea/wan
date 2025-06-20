@@ -6,8 +6,8 @@ ENV DEBIAN_FRONTEND=noninteractive \
     PIP_PREFER_BINARY=1 \
     PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
-   # PATH="/opt/venv/bin:$PATH"
-    PATH="/opt/venv/bin:/usr/bin:/bin:/usr/sbin:/sbin:$PATH"
+    PATH="/opt/venv/bin:$PATH"
+    
 
 
 # Instalar dependencias del sistema en pasos separados
@@ -41,8 +41,6 @@ RUN pip install --no-cache-dir \
 
 # 🔥 Instalar sageattention COMPLETO para RTX 5090
 #RUN pip install --no-cache-dir git+https://github.com/thu-ml/SageAttention.git
-RUN /usr/bin/git --version && \
-    pip install --no-cache-dir git+https://github.com/thu-ml/SageAttention.git
 
 # Instalar dependencias adicionales para WAN nodes con versiones compatibles
 RUN pip install --no-cache-dir \
