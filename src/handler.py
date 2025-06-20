@@ -334,15 +334,12 @@ def generate_video(input_image_base64, prompt, negative_prompt=""):
 
         # 🔥 NUEVA LÍNEA - AÑADIR AQUÍ
         # 2B Asegurar conexiones de modelos
-        final_workflow = _ensure_defaults(modified_workflow)
+       # final_workflow = _ensure_defaults(modified_workflow)
 
-        # 🔥 NUEVO: Debug final
-        print("🔍 AFTER _ensure_defaults:")
-        debug_workflow_connections(final_workflow)
-        
+            
         # 3. Ejecutar workflow
         print("⚡ Executing workflow...")
-        output_files = execute_workflow(final_workflow) #Ejecutamos el workflow que hemos pasado por _ensure_defaults
+        output_files = execute_workflow(modified_workflow) #Ejecutamos el workflow que hemos pasado por _ensure_defaults
         
         if not output_files:
             raise Exception("No output files generated")
