@@ -61,7 +61,7 @@ def modify_workflow(workflow: dict,
 
     Soporta tanto el formato “normal” (clave «nodes» con lista) como el formato
     API (nodos en el nivel superior con su id como clave).
-    """
+    """            
 
     # 1. Determinar dónde están los nodos
     if "nodes" in workflow and isinstance(workflow["nodes"], list):
@@ -164,7 +164,7 @@ def execute_workflow(workflow):
         
         # Polling para esperar a que termine
         print("⏳ Waiting for workflow execution...")
-        max_wait = 300  # 5 minutos máximo
+        max_wait = 900  # antes era 5 minutos máximo ahora es 15
         start_time = time.time()
         
         while time.time() - start_time < max_wait:
