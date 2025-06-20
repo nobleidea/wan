@@ -107,6 +107,38 @@ def modify_workflow(workflow: dict,
     # 3. Devolver el workflow modificado
     return workflow
 
+
+# FUNCIÓN DE DEBUG
+def debug_workflow_connections(workflow: dict):
+    """Debug para entender las conexiones actuales del workflow"""
+    print("🔍 === WORKFLOW DEBUG ===")
+    
+    # Verificar nodos críticos
+    critical_nodes = ["231", "232", "233", "302", "243", "244", "236", "290"]
+    
+    for node_id in critical_nodes:
+        if node_id in workflow:
+            node = workflow[node_id]
+            class_type = node.get("class_type", "Unknown")
+            inputs = node.get("inputs", {})
+            print(f"🔍 Node {node_id} ({class_type}):")
+            for input_name, input_value in inputs.items():
+                print(f"    {input_name}: {input_value}")
+        else:
+            print(f"❌ Node {node_id} NOT FOUND in workflow")
+    
+    # Verificar específicamente los nodos Anything Everywhere
+    anything_everywhere_nodes = ["280", "281", "282"]
+    print("\n🔍 === ANYTHING EVERYWHERE NODES ===")
+    for node_id in anything_everywhere_nodes:
+        if node_id in workflow:
+            node = workflow[node_id]
+            print(f"🔍 Node {node_id}: {node}")
+        else:
+            print(f"❌ Anything Everywhere node {node_id} NOT FOUND")
+    
+    print("🔍 === END DEBUG ===\n")
+
 # 🔥 NUEVA FUNCIÓN - Mapear nodos para arreglar error con algunos nodos
 def _ensure_defaults(workflow: dict) -> dict:
     """Conectar automáticamente los modelos que faltan en el workflow"""
@@ -116,7 +148,7 @@ def _ensure_defaults(workflow: dict) -> dict:
     default_connections = {
         "clip_vision": ["233", 0],    # CLIPVisionLoader -> CLIPVisionEncode
         "vae": ["232", 0],            # VAELoader -> VAEDecode y WanImageToVideo
-        "clip": ["302", 1],           # Power Lora Loader -> CLIPTextEncode
+        "clip": ["231", 0],           # ← CAMBIAR AQUÍ - CLIPLoader directo -> CLIPTextEncode
         "upscale_model": ["154", 0]   # UpscaleModelLoader -> ImageUpscaleWithModel
     }
     
@@ -289,12 +321,24 @@ def generate_video(input_image_base64, prompt, negative_prompt=""):
         print("📝 Loading and modifying workflow...")
         with open(WORKFLOW_PATH, 'r') as f:
             workflow = json.load(f)
+
+        # 🔥 NUEVO: Debug inicial
+        print("🔍 BEFORE modifications:")
+        debug_workflow_connections(workflow)
         
         modified_workflow = modify_workflow(workflow, saved_filename, prompt, negative_prompt)
+
+        # 🔥 NUEVO: Debug después de modify_workflow
+        print("🔍 AFTER modify_workflow:")
+        debug_workflow_connections(modified_workflow)
 
         # 🔥 NUEVA LÍNEA - AÑADIR AQUÍ
         # 2B Asegurar conexiones de modelos
         final_workflow = _ensure_defaults(modified_workflow)
+
+        # 🔥 NUEVO: Debug final
+        print("🔍 AFTER _ensure_defaults:")
+        debug_workflow_connections(final_workflow)
         
         # 3. Ejecutar workflow
         print("⚡ Executing workflow...")
