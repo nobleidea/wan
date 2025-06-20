@@ -8,18 +8,23 @@ ENV DEBIAN_FRONTEND=noninteractive \
     PYTHONDONTWRITEBYTECODE=1 \
     PATH="/opt/venv/bin:$PATH"
 
-# Instalar dependencias del sistema en pasos separados
-RUN apt-get update
-
-RUN apt-get install -y --no-install-recommends \
-    python3.12 python3.12-venv python3.12-dev python3-pip
-
-RUN apt-get install -y --no-install-recommends \
-    curl git wget vim libgl1 libglib2.0-0 build-essential
-
-RUN ln -sf /usr/bin/python3.12 /usr/bin/python && \
-    python3.12 -m venv /opt/venv && \
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    python3.12 python3.12-venv python3.12-dev python3-pip \
+    curl git wget vim libgl1 libglib2.0-0 build-essential && \
     apt-get clean && rm -rf /var/lib/apt/lists/*
+
+# Instalar dependencias del sistema en pasos separados
+#RUN apt-get update
+
+#RUN apt-get install -y --no-install-recommends \
+    #python3.12 python3.12-venv python3.12-dev python3-pip
+
+#RUN apt-get install -y --no-install-recommends \
+    #curl git wget vim libgl1 libglib2.0-0 build-essential
+
+#RUN ln -sf /usr/bin/python3.12 /usr/bin/python && \
+    #python3.12 -m venv /opt/venv && \
+    #apt-get clean && rm -rf /var/lib/apt/lists/*
 
 # Instalar PyTorch
 RUN pip install --no-cache-dir --pre torch torchvision torchaudio \
@@ -38,10 +43,7 @@ RUN pip install --no-cache-dir \
     opencv-contrib-python==4.11.0.86            # incluye guidedFilter
 
 # 🔥 Instalar sageattention COMPLETO para RTX 5090
-#RUN pip install --no-cache-dir git+https://github.com/thu-ml/SageAttention.git
-# 🔥 Instalar sageattention - ESTA VEZ SÍ FUNCIONARÁ
-RUN PATH="/usr/bin:/bin:/usr/sbin:/sbin:$PATH" \
-    pip install --no-cache-dir git+https://github.com/thu-ml/SageAttention.git
+RUN pip install --no-cache-dir git+https://github.com/thu-ml/SageAttention.git
 
 # Instalar dependencias adicionales para WAN nodes con versiones compatibles
 RUN pip install --no-cache-dir \
