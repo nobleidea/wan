@@ -52,8 +52,9 @@ RUN pip install --no-cache-dir \
 
 # ─── Impact-Pack deps: Segment-Anything + ONNX Runtime ───
 # Dependencias para Impact-Pack
+# Dependencias para Impact-Pack
 RUN pip install --no-cache-dir \
-    git+https://github.com/facebookresearch/segment-anything.git@6325eb80 \
+    segment-anything==1.0.0        \
     onnxruntime-gpu==1.18.0
 
 # Instalar ComfyUI
