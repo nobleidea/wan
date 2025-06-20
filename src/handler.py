@@ -398,7 +398,16 @@ def check_models():
     return True
 
 def start_comfyui():
-    """Iniciar ComfyUI server"""
+     """Iniciar ComfyUI server o verificar si ya está ejecutándose"""
+    # 🔥 NUEVO: Verificar si ComfyUI ya está ejecutándose
+    try:
+        response = requests.get(f"{COMFYUI_URL}/history", timeout=5)
+        if response.status_code == 200:
+            print("✅ ComfyUI already running! Reusing existing instance.")
+            return True
+    except Exception:
+        print("🔧 ComfyUI not running, starting new instance...")
+        
     # Crear symlink si no existe
     if not os.path.exists("/ComfyUI"):
         os.symlink(COMFYUI_PATH, "/ComfyUI")
