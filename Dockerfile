@@ -33,6 +33,7 @@ RUN pip install --no-cache-dir \
     requests \
     pillow \
     timm==0.9.16 \
+    wget \
     lark \
     opencv-contrib-python==4.11.0.86            # incluye guidedFilter
 
