@@ -471,16 +471,5 @@ def handler(event):
             "message": str(e)
         }
 
-if __name__ == "__main__":
-    # Para testing local
-    test_event = {
-        "input": {
-            "image": "test_base64_image",
-            "prompt": "A beautiful woman walking"
-        }
-    }
-    result = handler(test_event)
-    print(json.dumps(result, indent=2))
-else:
-    # Para RunPod serverless
-    runpod.serverless.start({"handler": handler})
+print("🚀 Starting RunPod Serverless handler...")
+runpod.serverless.start({"handler": handler})
