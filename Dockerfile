@@ -8,31 +8,27 @@ ENV DEBIAN_FRONTEND=noninteractive \
     PYTHONDONTWRITEBYTECODE=1 \
     PATH="/opt/venv/bin:$PATH"
 
+# Instalar dependencias del sistema en un solo paso para asegurar visibilidad
 RUN apt-get update && apt-get install -y --no-install-recommends \
     python3.12 python3.12-venv python3.12-dev python3-pip \
     curl git wget vim libgl1 libglib2.0-0 build-essential && \
     apt-get clean && rm -rf /var/lib/apt/lists/*
 
-# Instalar dependencias del sistema en pasos separados
-#RUN apt-get update
+# Crear el entorno virtual
+RUN ln -sf /usr/bin/python3.12 /usr/bin/python && \
+    python3.12 -m venv /opt/venv
 
-#RUN apt-get install -y --no-install-recommends \
-    #python3.12 python3.12-venv python3.12-dev python3-pip
-
-#RUN apt-get install -y --no-install-recommends \
-    #curl git wget vim libgl1 libglib2.0-0 build-essential
-
-#RUN ln -sf /usr/bin/python3.12 /usr/bin/python && \
-    #python3.12 -m venv /opt/venv && \
-    #apt-get clean && rm -rf /var/lib/apt/lists/*
+# --- Instalaciones de Python dentro del venv ---
+# CORRECCIÓN: Usar el python del venv explícitamente para evitar el error PEP 668
+# Primero, actualizar pip dentro del venv
+RUN /opt/venv/bin/python -m pip install --no-cache-dir --upgrade pip
 
 # Instalar PyTorch
-RUN pip install --no-cache-dir --pre torch torchvision torchaudio \
-        --index-url https://download.pytorch.org/whl/nightly/cu128
+RUN /opt/venv/bin/python -m pip install --no-cache-dir --pre torch torchvision torchaudio \
+      --index-url https://download.pytorch.org/whl/nightly/cu128
 
 # Instalar dependencias base
-# Instalar dependencias base (quitamos opencv-python, ponemos la versión compatible)
-RUN pip install --no-cache-dir \
+RUN /opt/venv/bin/python -m pip install --no-cache-dir \
     runpod \
     websocket-client \
     requests \
@@ -40,13 +36,13 @@ RUN pip install --no-cache-dir \
     timm==0.9.16 \
     wget \
     lark \
-    opencv-contrib-python==4.11.0.86            # incluye guidedFilter
+    opencv-contrib-python==4.11.0.86      # incluye guidedFilter
 
-# 🔥 Instalar sageattention COMPLETO para RTX 5090
-RUN pip install --no-cache-dir git+https://github.com/thu-ml/SageAttention.git
+# 🔥 Instalar sageattention COMPLETO para RTX 5090 (Ahora funcionará)
+RUN /opt/venv/bin/python -m pip install --no-cache-dir git+https://github.com/thu-ml/SageAttention.git
 
 # Instalar dependencias adicionales para WAN nodes con versiones compatibles
-RUN pip install --no-cache-dir \
+RUN /opt/venv/bin/python -m pip install --no-cache-dir \
     accelerate \
     scikit-image \
     numba \
@@ -62,14 +58,12 @@ RUN pip install --no-cache-dir \
     "transformers>=4.37.0,<4.45.0"
 
 # ─── Impact-Pack deps: Segment-Anything + ONNX Runtime ───
-# Dependencias para Impact-Pack
-# Dependencias para Impact-Pack
-RUN pip install --no-cache-dir \
-    segment-anything==1.0.0        \
+RUN /opt/venv/bin/python -m pip install --no-cache-dir \
+    segment-anything==1.0.0      \
     onnxruntime-gpu==1.18.0
 
 # Instalar ComfyUI
-RUN pip install --no-cache-dir comfy-cli && \
+RUN /opt/venv/bin/python -m pip install --no-cache-dir comfy-cli && \
     /usr/bin/yes | comfy --workspace /ComfyUI install
 
 # Instalar custom nodes uno por uno
@@ -92,10 +86,10 @@ RUN cd /ComfyUI/custom_nodes && \
     git clone https://github.com/ltdrdata/ComfyUI-Impact-Pack.git && \
     git clone https://github.com/yolain/ComfyUI-Easy-Use.git
 
-# Instalar requirements
-RUN pip install --no-cache-dir -r /ComfyUI/custom_nodes/ComfyUI-KJNodes/requirements.txt || true
-RUN pip install --no-cache-dir -r /ComfyUI/custom_nodes/ComfyUI-VideoHelperSuite/requirements.txt || true
-RUN pip install --no-cache-dir -r /ComfyUI/custom_nodes/ComfyUI-Frame-Interpolation/requirements.txt || true
+# Instalar requirements de los custom nodes
+RUN /opt/venv/bin/python -m pip install --no-cache-dir -r /ComfyUI/custom_nodes/ComfyUI-KJNodes/requirements.txt || true
+RUN /opt/venv/bin/python -m pip install --no-cache-dir -r /ComfyUI/custom_nodes/ComfyUI-VideoHelperSuite/requirements.txt || true
+RUN /opt/venv/bin/python -m pip install --no-cache-dir -r /ComfyUI/custom_nodes/ComfyUI-Frame-Interpolation/requirements.txt || true
 
 # Copiar archivos
 COPY src/ /app/
