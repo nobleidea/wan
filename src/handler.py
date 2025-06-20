@@ -208,36 +208,57 @@ def extract_output_files(outputs):
     try:
         output_files = []
         
-        # Los nodos de video suelen ser VHS_VideoCombine
-        for node_id, node_output in outputs.items():
-            if "videos" in node_output:
-                for video_info in node_output["videos"]:
-                    video_path = f"{COMFYUI_PATH}/output/{video_info['filename']}"
-                    if os.path.exists(video_path):
-                        output_files.append({
-                            "type": "video",
-                            "filename": video_info['filename'],
-                            "path": video_path,
-                            "node_id": node_id
-                        })
-                        print(f"✅ Found output video: {video_info['filename']}")
-            
-            if "images" in node_output:
-                for image_info in node_output["images"]:
-                    image_path = f"{COMFYUI_PATH}/output/{image_info['filename']}"
-                    if os.path.exists(image_path):
-                        output_files.append({
-                            "type": "image", 
-                            "filename": image_info['filename'],
-                            "path": image_path,
-                            "node_id": node_id
-                        })
-                        print(f"✅ Found output image: {image_info['filename']}")
+        # 🔥 DEBUG: Mostrar toda la respuesta
+        print(f"🔍 DEBUG: Full outputs received: {outputs}")
+        print(f"🔍 DEBUG: Type of outputs: {type(outputs)}")
         
+        # 🔥 DEBUG: Verificar directorio de salida
+        output_dir = f"{COMFYUI_PATH}/output"
+        print(f"🔍 DEBUG: Checking output directory: {output_dir}")
+        
+        if os.path.exists(output_dir):
+            files_in_output = os.listdir(output_dir)
+            print(f"🔍 DEBUG: Files in output dir: {files_in_output}")
+            
+            # 🔥 FALLBACK: Buscar archivos recientes automaticamente
+            if len(files_in_output) > 0:
+                import time
+                current_time = time.time()
+                
+                for filename in files_in_output:
+                    file_path = os.path.join(output_dir, filename)
+                    file_age = current_time - os.path.getmtime(file_path)
+                    
+                    print(f"🔍 DEBUG: File {filename}, age: {file_age:.2f} seconds")
+                    
+                    # Archivos creados en los últimos 10 minutos
+                    if file_age < 600:  
+                        if filename.endswith(('.mp4', '.avi', '.mov', '.webm')):
+                            output_files.append({
+                                "type": "video",
+                                "filename": filename,
+                                "path": file_path,
+                                "node_id": "auto_detected"
+                            })
+                            print(f"✅ Auto-detected video: {filename}")
+                        elif filename.endswith(('.png', '.jpg', '.jpeg')):
+                            output_files.append({
+                                "type": "image",
+                                "filename": filename,
+                                "path": file_path,
+                                "node_id": "auto_detected"
+                            })
+                            print(f"✅ Auto-detected image: {filename}")
+        else:
+            print(f"❌ Output directory doesn't exist: {output_dir}")
+        
+        print(f"🔍 DEBUG: Total files found: {len(output_files)}")
         return output_files
         
     except Exception as e:
         print(f"❌ Error extracting output files: {e}")
+        import traceback
+        traceback.print_exc()
         return []
 
 def file_to_base64(file_path):
