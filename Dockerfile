@@ -38,7 +38,10 @@ RUN pip install --no-cache-dir \
     opencv-contrib-python==4.11.0.86            # incluye guidedFilter
 
 # 🔥 Instalar sageattention COMPLETO para RTX 5090
-RUN pip install --no-cache-dir git+https://github.com/thu-ml/SageAttention.git
+#RUN pip install --no-cache-dir git+https://github.com/thu-ml/SageAttention.git
+# 🔥 Instalar sageattention - ESTA VEZ SÍ FUNCIONARÁ
+RUN PATH="/usr/bin:/bin:/usr/sbin:/sbin:$PATH" \
+    pip install --no-cache-dir git+https://github.com/thu-ml/SageAttention.git
 
 # Instalar dependencias adicionales para WAN nodes con versiones compatibles
 RUN pip install --no-cache-dir \
