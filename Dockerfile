@@ -32,7 +32,9 @@ RUN pip install --no-cache-dir \
     websocket-client \
     requests \
     pillow \
-    opencv-contrib-python-headless==4.11.0.86   # wheel cp312 disponible
+    timm==0.9.16 \
+    lark \
+    opencv-contrib-python==4.11.0.86            # incluye guidedFilter
 
 # Instalar dependencias adicionales para WAN nodes con versiones compatibles
 RUN pip install --no-cache-dir \
