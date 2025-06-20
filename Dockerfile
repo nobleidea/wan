@@ -34,6 +34,7 @@ RUN pip install --no-cache-dir \
     pillow \
     timm==0.9.16 \
     wget \
+    sageattention \
     lark \
     opencv-contrib-python==4.11.0.86            # incluye guidedFilter
 
