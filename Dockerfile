@@ -52,7 +52,7 @@ RUN apt-get update && \
     pip install --no-cache-dir \
          /tmp/sam.tar.gz \
          onnxruntime-gpu==1.18.0 \
-         opencv-contrib-python-headless==4.10.0.84 && \
+         opencv-contrib-python-headless==4.11.0.86 && \
     rm /tmp/sam.tar.gz && \
     apt-get purge -y git && \
     rm -rf /var/lib/apt/lists/*
