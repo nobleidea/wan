@@ -19,37 +19,120 @@ WORKFLOW_PATH = "/app/workflow.json"
 COMFYUI_URL = "http://localhost:8188"
 
 def save_base64_image(base64_string, filename):
-    """Guardar imagen base64 en el sistema de archivos"""
+    """Guardar imagen base64 en el sistema de archivos con procesamiento PIL"""
     try:
         # Remover el prefijo data:image si existe
         if ',' in base64_string:
             base64_string = base64_string.split(',')[1]
 
-        # --- INICIO DE LA CORRECCIÓN ---
         # Añadir padding si es necesario para evitar el error "Incorrect padding"
         missing_padding = len(base64_string) % 4
         if missing_padding:
             base64_string += '=' * (4 - missing_padding)
-        # --- FIN DE LA CORRECCIÓN ---
 
         # Decodificar base64
         image_data = base64.b64decode(base64_string)
+        
+        # 🔥 NUEVO: Procesar con PIL para calidad correcta
+        from PIL import Image
+        import io
+        
+        # Cargar imagen desde bytes
+        image = Image.open(io.BytesIO(image_data))
+        
+        # Manejar diferentes modos de color correctamente
+        if image.mode == 'RGBA':
+            # Crear fondo blanco para transparencias
+            background = Image.new('RGB', image.size, (255, 255, 255))
+            background.paste(image, mask=image.split()[3])  # Alpha channel
+            image = background
+        elif image.mode == 'P':
+            # Paleta de colores
+            image = image.convert('RGB')
+        elif image.mode not in ('RGB', 'L'):
+            image = image.convert('RGB')
         
         # Crear directorio input si no existe
         input_dir = f"{COMFYUI_PATH}/input"
         os.makedirs(input_dir, exist_ok=True)
         
-        # Guardar imagen
+        # Guardar imagen con máxima calidad
         image_path = f"{input_dir}/{filename}"
-        with open(image_path, 'wb') as f:
-            f.write(image_data)
+        image.save(image_path, 'PNG', optimize=False, compress_level=0)
         
-        print(f"✅ Image saved: {image_path}")
+        print(f"✅ Image saved: {image_path} (Mode: {image.mode}, Size: {image.size})")
         return filename
         
     except Exception as e:
         print(f"❌ Error saving image: {e}")
         raise Exception(f"Failed to save input image: {e}")
+
+
+def download_image_from_url(image_url):
+    """Descargar imagen desde URL"""
+    try:
+        import requests
+        from PIL import Image
+        import io
+        
+        print(f"📥 Downloading image from: {image_url}")
+        
+        # Descargar imagen
+        response = requests.get(image_url, timeout=30)
+        response.raise_for_status()
+        
+        # Procesar con PIL
+        image = Image.open(io.BytesIO(response.content))
+        
+        # Manejar diferentes modos de color
+        if image.mode == 'RGBA':
+            background = Image.new('RGB', image.size, (255, 255, 255))
+            background.paste(image, mask=image.split()[3])
+            image = background
+        elif image.mode == 'P':
+            image = image.convert('RGB')
+        elif image.mode not in ('RGB', 'L'):
+            image = image.convert('RGB')
+        
+        # Guardar
+        input_dir = f"{COMFYUI_PATH}/input"
+        os.makedirs(input_dir, exist_ok=True)
+        
+        timestamp = int(time.time() * 1000000)
+        filename = f"input_{timestamp}.png"
+        image_path = f"{input_dir}/{filename}"
+        
+        image.save(image_path, 'PNG', optimize=False, compress_level=0)
+        
+        print(f"✅ Image downloaded and saved: {image_path} (Mode: {image.mode}, Size: {image.size})")
+        return filename  # ✅ Devolver solo filename para consistencia
+        
+    except Exception as e:
+        print(f"❌ Error downloading image: {e}")
+        raise Exception(f"Failed to download image: {e}")
+
+def process_image_input(image_input):
+    """Procesar imagen desde cualquier formato"""
+    try:
+        if isinstance(image_input, str):
+            if image_input.startswith(("http://", "https://")):
+                # URL
+                print("🔗 Processing image from URL")
+                return download_image_from_url(image_input)
+            elif image_input.startswith("data:image") or len(image_input) > 100:
+                # Base64
+                print("📄 Processing image from Base64")
+                timestamp = int(time.time() * 1000000)
+                filename = f"input_{timestamp}.png"
+                return save_base64_image(image_input, filename)
+            else:
+                raise ValueError(f"Invalid image string format: {image_input[:50]}...")
+        else:
+            raise ValueError(f"Unknown image input format: {type(image_input)}")
+            
+    except Exception as e:
+        print(f"❌ Error processing image: {e}")
+        raise Exception(f"Failed to process image: {e}")
 
 
 def modify_workflow(workflow: dict,
@@ -255,14 +338,13 @@ def file_to_base64(file_path):
         print(f"❌ Error converting file to base64: {e}")
         return None
 
-def generate_video(input_image_base64, prompt, negative_prompt=""):
+def generate_video(input_image, prompt, negative_prompt=""):
     """Generar video usando el workflow completo"""
     try:
         print("🎬 Starting video generation...")
         
-        # 1. Guardar imagen de input
-        image_filename = f"input_{int(time.time())}.png"
-        saved_filename = save_base64_image(input_image_base64, image_filename)
+       # 1. Procesar imagen de entrada (híbrido)
+        saved_filename = process_image_input(input_image)
         
         # 2. Cargar y modificar workflow
         print("📝 Loading and modifying workflow...")
