@@ -138,7 +138,9 @@ def process_image_input(image_input):
 def modify_workflow(workflow: dict,
                     image_filename: str,
                     prompt: str,
-                    negative_prompt: str) -> dict:
+                    negative_prompt: str,
+                    width: int = 832,
+                    height: int = 480) -> dict:
     """
     Modifica el workflow con los parámetros del usuario
     """
@@ -190,6 +192,12 @@ def modify_workflow(workflow: dict,
             print(f"❌ Node 259 missing inputs section")
     else:
         print(f"❌ Node 259 (KSampler) not found in workflow")
+
+     # NODO 236: WanImageToVideo - width y height
+    if "236" in workflow and "inputs" in workflow["236"]:
+        workflow["236"]["inputs"]["width"] = width
+        workflow["236"]["inputs"]["height"] = height
+        print(f"✅ Updated WanImageToVideo dimensions: {width}x{height}")
     
     # Verificar que los cambios se aplicaron
     print("🔍 Verification:")
@@ -338,7 +346,7 @@ def file_to_base64(file_path):
         print(f"❌ Error converting file to base64: {e}")
         return None
 
-def generate_video(input_image, prompt, negative_prompt=""):
+def generate_video(input_image, prompt, negative_prompt="", width=832, height=480):
     """Generar video usando el workflow completo"""
     try:
         print("🎬 Starting video generation...")
@@ -355,7 +363,7 @@ def generate_video(input_image, prompt, negative_prompt=""):
         print("🔍 BEFORE modifications:")
      #   debug_workflow_connections(workflow)
         
-        modified_workflow = modify_workflow(workflow, saved_filename, prompt, negative_prompt)
+        modified_workflow = modify_workflow(workflow, saved_filename, prompt, negative_prompt, width, height)
 
         # 🔥 NUEVO: Debug después de modify_workflow
         print("🔍 AFTER modify_workflow:")
@@ -555,7 +563,9 @@ def handler(event):
         result = generate_video(
             job_input.get("image", ""),
             job_input.get("prompt", ""),
-            job_input.get("negative_prompt", "")
+            job_input.get("negative_prompt", ""),
+            job_input.get("width", 832),      # Valor por defecto
+            job_input.get("height", 480)      # Valor por defecto
         )
         
         return result
