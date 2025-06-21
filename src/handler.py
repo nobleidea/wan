@@ -57,66 +57,69 @@ def modify_workflow(workflow: dict,
                     prompt: str,
                     negative_prompt: str) -> dict:
     """
-    Inserta la imagen, prompts y seed único en los nodos del workflow.
-    Soporta tanto el formato "normal" (clave «nodes» con lista) como el formato
-    API (nodos en el nivel superior con su id como clave).
+    Modifica el workflow con los parámetros del usuario
     """
     import time
     
     # Generar seed único
-    unique_seed = int(time.time() * 1000) % 2147483647
+    unique_seed = int(time.time() * 1000000) % 2147483647  # Más variación
     print(f"🎲 Generated unique seed: {unique_seed}")
     
-    # 1. Determinar dónde están los nodos
-    if "nodes" in workflow and isinstance(workflow["nodes"], list):
-        # Formato 'Guardar workflow'
-        node_iter = workflow["nodes"]
+    # Crear una copia del workflow para no modificar el original
+    modified_workflow = workflow.copy()
+    
+    # NODO 294: LoadImage - Actualizar imagen de entrada
+    if "294" in modified_workflow:
+        if "inputs" in modified_workflow["294"]:
+            modified_workflow["294"]["inputs"]["image"] = image_filename
+            print(f"✅ Updated LoadImage (294) with image: {image_filename}")
+        else:
+            print(f"❌ Node 294 missing inputs section")
     else:
-        # Formato API → los nodos están en las propias claves del dict
-        node_iter = [
-            v for k, v in workflow.items()
-            if isinstance(v, dict) and "class_type" in v
-        ]
-
-    # 2. Recorrer y modificar UNA SOLA VEZ
-    for node in node_iter:
-        node_id = str(node.get("id") or "")
-        class_type = node.get("type") or node.get("class_type")
-
-        # --- KSampler (Actualizar seed) ------------------------------------------
-        if class_type == "KSampler":
-            if "widgets_values" in node:
-                node["widgets_values"][0] = unique_seed
-            elif "inputs" in node and "seed" in node["inputs"]:
-                node["inputs"]["seed"] = unique_seed
-            print(f"✅ Updated KSampler seed to: {unique_seed}")
-
-        # --- Nodo 294 – LoadImage ------------------------------------------------
-        elif node_id == "294" and class_type == "LoadImage":
-            if "widgets_values" in node:
-                node["widgets_values"][0] = image_filename
-            elif "inputs" in node and "image" in node["inputs"]:
-                node["inputs"]["image"] = image_filename
-            print(f"✅ Updated LoadImage node with: {image_filename}")
-
-        # --- Nodo 243 – CLIPTextEncode (Prompt positivo) -------------------------
-        elif node_id == "243" and class_type == "CLIPTextEncode":
-            if "widgets_values" in node:
-                node["widgets_values"][0] = prompt
-            elif "inputs" in node and "text" in node["inputs"]:
-                node["inputs"]["text"] = prompt
-            print(f"✅ Updated positive prompt: {prompt[:50]}...")
-
-        # --- Nodo 244 – CLIPTextEncode (Prompt negativo) -------------------------
-        elif node_id == "244" and class_type == "CLIPTextEncode":
-            if "widgets_values" in node:
-                node["widgets_values"][0] = negative_prompt
-            elif "inputs" in node and "text" in node["inputs"]:
-                node["inputs"]["text"] = negative_prompt
-            print(f"✅ Updated negative prompt: {negative_prompt[:50]}...")
-
-    # 3. Devolver el workflow modificado
-    return workflow
+        print(f"❌ Node 294 (LoadImage) not found in workflow")
+    
+    # NODO 243: Prompt positivo
+    if "243" in modified_workflow:
+        if "inputs" in modified_workflow["243"]:
+            modified_workflow["243"]["inputs"]["text"] = prompt
+            print(f"✅ Updated positive prompt (243): {prompt[:50]}...")
+        else:
+            print(f"❌ Node 243 missing inputs section")
+    else:
+        print(f"❌ Node 243 (positive prompt) not found in workflow")
+    
+    # NODO 244: Prompt negativo
+    if "244" in modified_workflow:
+        if "inputs" in modified_workflow["244"]:
+            modified_workflow["244"]["inputs"]["text"] = negative_prompt
+            print(f"✅ Updated negative prompt (244): {negative_prompt[:50]}...")
+        else:
+            print(f"❌ Node 244 missing inputs section")
+    else:
+        print(f"❌ Node 244 (negative prompt) not found in workflow")
+    
+    # NODO 259: KSampler - Actualizar seed
+    if "259" in modified_workflow:
+        if "inputs" in modified_workflow["259"]:
+            modified_workflow["259"]["inputs"]["seed"] = unique_seed
+            print(f"✅ Updated KSampler (259) seed: {unique_seed}")
+        else:
+            print(f"❌ Node 259 missing inputs section")
+    else:
+        print(f"❌ Node 259 (KSampler) not found in workflow")
+    
+    # Verificar que los cambios se aplicaron
+    print("🔍 Verification:")
+    if "294" in modified_workflow and "inputs" in modified_workflow["294"]:
+        print(f"  - Image: {modified_workflow['294']['inputs'].get('image', 'NOT SET')}")
+    if "243" in modified_workflow and "inputs" in modified_workflow["243"]:
+        print(f"  - Positive: {modified_workflow['243']['inputs'].get('text', 'NOT SET')[:30]}...")
+    if "244" in modified_workflow and "inputs" in modified_workflow["244"]:
+        print(f"  - Negative: {modified_workflow['244']['inputs'].get('text', 'NOT SET')[:30]}...")
+    if "259" in modified_workflow and "inputs" in modified_workflow["259"]:
+        print(f"  - Seed: {modified_workflow['259']['inputs'].get('seed', 'NOT SET')}")
+    
+    return modified_workflow
 
 
 # FUNCIÓN DE DEBUG
