@@ -437,34 +437,6 @@ def get_file_size(file_path):
     except:
         return "Unknown"
 
-def setup_download_endpoint():
-    """Configurar endpoint de descarga"""
-    from flask import Flask, send_file, abort
-    
-    app = Flask(__name__)
-    
-    @app.route('/download/<filename>')
-    def download_file(filename):
-        try:
-            file_path = f"{COMFYUI_PATH}/output/{filename}"
-            if os.path.exists(file_path):
-                return send_file(file_path, as_attachment=True)
-            else:
-                abort(404)
-        except Exception as e:
-            print(f"Download error: {e}")
-            abort(500)
-    
-    # Iniciar servidor Flask en background
-    import threading
-    server_thread = threading.Thread(
-        target=lambda: app.run(host='0.0.0.0', port=8080, debug=False)
-    )
-    server_thread.daemon = True
-    server_thread.start()
-    print("📁 Download server started on port 8080")
-
-# ... resto de funciones (check_models, start_comfyui, handler) sin cambios
 
 def check_models():
     """Verificar que los modelos estén disponibles en el network volume"""
