@@ -22,7 +22,7 @@ COMFYUI_URL = "http://localhost:8188"
 
 # 🔥 NUEVO: Configuración para RunPod output. Rutas absolutas para evitar problemas con cambios de directorio
 OUTPUT_DIR = Path(f"{COMFYUI_PATH}/output")           # Donde ComfyUI guarda
-RP_OUTPUT_DIR  = Path("/workspace/output_objects")   # <- raíz del contenedor 🔥 Network volume
+RP_OUTPUT_DIR = Path("/output_objects")   # <- raíz del contenedor 🔥 Network volume
 RP_OUTPUT_DIR.mkdir(exist_ok=True, parents=True)
 
 
@@ -314,7 +314,7 @@ def execute_workflow(workflow):
 
 
 def extract_output_files(outputs):
-    """Copiar exclusivamente el primer .mp4 del nodo 94 a /workspace/output_objects"""
+    """Copiar exclusivamente el primer .mp4 del nodo 94 a /output_objects"""
     for node_id, node_output in outputs.items():
         if str(node_id) != TARGET_NODE:          # ⬅️  SALTA si no es 94
             continue
