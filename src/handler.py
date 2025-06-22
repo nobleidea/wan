@@ -22,7 +22,7 @@ COMFYUI_URL = "http://localhost:8188"
 
 # 🔥 NUEVO: Configuración para RunPod output. Rutas absolutas para evitar problemas con cambios de directorio
 OUTPUT_DIR = Path(f"{COMFYUI_PATH}/output")           # Donde ComfyUI guarda
-RP_OUTPUT_DIR = Path(f"{WORKSPACE_PATH}/output_objects") # 🔥 Network volume
+RP_OUTPUT_DIR  = Path("/output_objects")   # <- raíz del contenedor 🔥 Network volume
 RP_OUTPUT_DIR.mkdir(exist_ok=True, parents=True)
 
 def save_base64_image(base64_string, filename):
