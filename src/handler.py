@@ -13,6 +13,8 @@ from PIL import Image
 import io
 import shutil
 
+from runpod.serverless.utils import rp_upload
+
 
 # Configuración
 WORKSPACE_PATH = "/runpod-volume"
@@ -314,34 +316,40 @@ def execute_workflow(workflow):
 
 
 def extract_output_files(outputs):
-    """Copiar exclusivamente el primer .mp4 del nodo 94 a /output_objects"""
+    """Usar rp_upload para obtener URLs descargables automáticamente"""
     for node_id, node_output in outputs.items():
-        if str(node_id) != TARGET_NODE:          # ⬅️  SALTA si no es 94
+        if str(node_id) != TARGET_NODE:
             continue
 
-        # 'videos' es la clave habitual; 'gifs' por si acaso
         for key in ("videos", "gifs"):
             if key not in node_output:
                 continue
 
-            video_info = node_output[key][0]     # sólo el primero
-            src  = Path(video_info["fullpath"])
+            video_info = node_output[key][0]
+            src = Path(video_info["fullpath"])
             if not src.exists():
                 raise FileNotFoundError(src)
 
-            dest = RP_OUTPUT_DIR / f"{uuid.uuid4()}{src.suffix}"
-            shutil.copy2(src, dest)
-
-            print(f"✅ Copiado vídeo del nodo 94 → {dest}")
-
-            return [{                           # ← lista con UN elemento
-                "type": "video",
-                "filename": dest.name,
-                "original_path": str(src),          # ← AÑADE ESTO
-                "file_size": f"{round(src.stat().st_size/1_048_576,2)} MB",
-                "node_id": TARGET_NODE,
-                "frame_rate": video_info.get("frame_rate", 32)
-            }]
+            # 🔥 USAR rp_upload - RunPod se encarga del resto
+            try:
+                job_id = str(uuid.uuid4())
+                video_url = rp_upload.upload_file(job_id, str(src))
+                
+                print(f"✅ Video subido con URL: {video_url}")
+                
+                return [{
+                    "type": "video",
+                    "url": video_url,                    # ← ESTO te dará la URL
+                    "filename": src.name,
+                    "original_path": str(src),
+                    "file_size": f"{round(src.stat().st_size/1_048_576,2)} MB",
+                    "node_id": TARGET_NODE,
+                    "frame_rate": video_info.get("frame_rate", 32)
+                }]
+                
+            except Exception as e:
+                print(f"❌ Error con rp_upload: {e}")
+                raise RuntimeError(f"No se pudo subir el archivo: {e}")
 
     raise RuntimeError("No se encontró salida del nodo 94")
 
