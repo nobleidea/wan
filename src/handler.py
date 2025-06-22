@@ -11,12 +11,19 @@ import uuid
 from pathlib import Path
 from PIL import Image
 import io
+import shutil
+
 
 # Configuración
 WORKSPACE_PATH = "/runpod-volume"
 COMFYUI_PATH = f"{WORKSPACE_PATH}/ComfyUI"
 WORKFLOW_PATH = "/app/workflow.json"
 COMFYUI_URL = "http://localhost:8188"
+
+# 🔥 NUEVO: Configuración para RunPod output. Rutas absolutas para evitar problemas con cambios de directorio
+OUTPUT_DIR = Path(f"{COMFYUI_PATH}/output")           # Donde ComfyUI guarda
+RP_OUTPUT_DIR = Path(f"{WORKSPACE_PATH}/output_objects") # 🔥 Network volume
+RP_OUTPUT_DIR.mkdir(exist_ok=True, parents=True)
 
 def save_base64_image(base64_string, filename):
     """Guardar imagen base64 en el sistema de archivos con procesamiento PIL"""
@@ -32,11 +39,7 @@ def save_base64_image(base64_string, filename):
 
         # Decodificar base64
         image_data = base64.b64decode(base64_string)
-        
-        # 🔥 NUEVO: Procesar con PIL para calidad correcta
-        from PIL import Image
-        import io
-        
+                
         # Cargar imagen desde bytes
         image = Image.open(io.BytesIO(image_data))
         
@@ -71,9 +74,6 @@ def save_base64_image(base64_string, filename):
 def download_image_from_url(image_url):
     """Descargar imagen desde URL"""
     try:
-        import requests
-        from PIL import Image
-        import io
         
         print(f"📥 Downloading image from: {image_url}")
         
@@ -193,10 +193,10 @@ def modify_workflow(workflow: dict,
     else:
         print(f"❌ Node 259 (KSampler) not found in workflow")
 
-     # NODO 236: WanImageToVideo - width y height
-    if "236" in workflow and "inputs" in workflow["236"]:
-        workflow["236"]["inputs"]["width"] = width
-        workflow["236"]["inputs"]["height"] = height
+    # NODO 236: WanImageToVideo - width y height
+    if "236" in modified_workflow and "inputs" in modified_workflow["236"]:
+        modified_workflow["236"]["inputs"]["width"] = width
+        modified_workflow["236"]["inputs"]["height"] = height
         print(f"✅ Updated WanImageToVideo dimensions: {width}x{height}")
     
     # Verificar que los cambios se aplicaron
@@ -302,37 +302,75 @@ def execute_workflow(workflow):
                 elapsed = int(time.time() - start_time)
                 print(f"⏳ Still waiting... ({elapsed}s elapsed)")
         
-        raise Exception("Workflow execution timeout after 5 minutes")
+        raise Exception("Workflow execution timeout after 15 minutes")
         
     except Exception as e:
         print(f"❌ Error executing workflow: {e}")
         raise Exception(f"Failed to execute workflow: {e}")
 
 def extract_output_files(outputs):
-    """Extraer archivos de salida del resultado del workflow"""
+    """Extraer archivos de salida y copiarlos a output_objects para RunPod"""
     try:
         output_files = []
         
+        # 🔍 DEBUG: Ver estructura real de outputs Y tipos de datos
+        print("🔍 DEBUG - Estructura completa de outputs:")
+        for node_id, node_output in outputs.items():
+            print(f"  Node {node_id} (tipo: {type(node_id)}): {list(node_output.keys())}")
+            
+            # 🔥 NUEVO: Verificar tanto string como int para nodo 94
+            if str(node_id) == "94" or node_id == 94:
+                print(f"    ✅ ENCONTRADO NODO 94!")
+                print(f"    Tipo de node_id: {type(node_id)}")
+                print(f"    Contenido completo: {node_output}")
+                print(f"    Claves disponibles: {list(node_output.keys())}")
+        
         # Procesar estructura oficial de ComfyUI
         for node_id, node_output in outputs.items():
-            # ComfyUI usa 'gifs' para videos de VHS_VideoCombine
-            if "gifs" in node_output:
-                for video_info in node_output["gifs"]:
-                    if os.path.exists(video_info['fullpath']):
-                        output_files.append({
-                            "type": "video",
-                            "filename": video_info['filename'],
-                            "path": video_info['fullpath'],
-                            "node_id": node_id,
-                            "format": video_info.get('format', 'unknown'),
-                            "frame_rate": video_info.get('frame_rate', 'unknown')
-                        })
-                        print(f"✅ Found video: {video_info['filename']}")
+            # 🔥 MEJORADO: Verificar todas las variantes del nodo 94
+            is_target_node = (str(node_id) == "94" or node_id == 94)
+            
+            # Probar ambas claves posibles (videos primero, luego gifs como fallback)
+            for key in ["videos", "gifs"]:
+                if key in node_output:
+                    print(f"🔍 Procesando {key} del nodo {node_id}")
+                    
+                    for video_info in node_output[key]:
+                        src = Path(video_info['fullpath'])
+                        if src.exists():
+                            # 🔥 USAR RUTA ABSOLUTA (corregido del problema anterior)
+                            dest = RP_OUTPUT_DIR / f"{uuid.uuid4()}{src.suffix}"
+                            shutil.copy2(src, dest)
+                            
+                            output_files.append({
+                                "type": "video",
+                                "filename": dest.name,
+                                "original_path": str(src),
+                                "runpod_path": str(dest),
+                                "node_id": str(node_id),  # 🔥 NUEVO: Normalizar a string
+                                "source_key": key,
+                                "format": video_info.get('format', 'mp4'),
+                                "frame_rate": video_info.get('frame_rate', 32),
+                                "is_target_node": is_target_node  # Para debug
+                            })
+                            print(f"✅ Video copiado desde {key} (nodo {node_id}): {dest.name}")
+                            print(f"   Origen: {src}")
+                            print(f"   Destino en output_objects: {dest}")
+                        else:
+                            print(f"❌ Archivo no encontrado: {src}")
+        
+        if not output_files:
+            print("❌ WARNING: No se encontraron archivos de salida!")
+            print("🔍 Estructura completa para debug:")
+            import json
+            print(json.dumps(outputs, indent=2, default=str))
         
         return output_files
         
     except Exception as e:
         print(f"❌ Error extracting output files: {e}")
+        import traceback
+        traceback.print_exc()
         return []
 
 def file_to_base64(file_path):
@@ -377,20 +415,17 @@ def generate_video(input_image, prompt, negative_prompt="", width=832, height=48
         if not output_files:
             raise Exception("No output files generated")
         
-        # 4. Crear URLs de descarga
-        print("🔗 Creating download URLs...")
+        # 4. Preparar resultados (RunPod añadirá URLs automáticamente)
+        print("📦 Preparing results for RunPod...")
         results = []
         
         for output_file in output_files:
-            # Crear URL de descarga directa
-            download_url = f"https://your-runpod-id.runpod.io/download/{output_file['filename']}"
-            
             results.append({
                 "type": output_file["type"],
-                "filename": output_file["filename"],
-                "download_url": download_url,
-                "file_size": get_file_size(output_file["path"]),
-                "node_id": output_file["node_id"]
+                "filename": output_file["filename"],  # Nombre en output_objects
+                "file_size": get_file_size(output_file["original_path"]),
+                "node_id": output_file["node_id"],
+                "source_key": output_file.get("source_key", "unknown")  # Para debug
             })
         
         print(f"✅ Video generation completed! Generated {len(results)} files")
@@ -418,34 +453,6 @@ def get_file_size(file_path):
     except:
         return "Unknown"
 
-def setup_download_endpoint():
-    """Configurar endpoint de descarga"""
-    from flask import Flask, send_file, abort
-    
-    app = Flask(__name__)
-    
-    @app.route('/download/<filename>')
-    def download_file(filename):
-        try:
-            file_path = f"{COMFYUI_PATH}/output/{filename}"
-            if os.path.exists(file_path):
-                return send_file(file_path, as_attachment=True)
-            else:
-                abort(404)
-        except Exception as e:
-            print(f"Download error: {e}")
-            abort(500)
-    
-    # Iniciar servidor Flask en background
-    import threading
-    server_thread = threading.Thread(
-        target=lambda: app.run(host='0.0.0.0', port=8080, debug=False)
-    )
-    server_thread.daemon = True
-    server_thread.start()
-    print("📁 Download server started on port 8080")
-
-# ... resto de funciones (check_models, start_comfyui, handler) sin cambios
 
 def check_models():
     """Verificar que los modelos estén disponibles en el network volume"""
@@ -481,9 +488,13 @@ def start_comfyui():
     except Exception:
         print("🔧 ComfyUI not running, starting new instance...")
         
-    # Crear symlink si no existe
-    if not os.path.exists("/ComfyUI"):
-        os.symlink(COMFYUI_PATH, "/ComfyUI")
+     # 🔥 SOLUCIÓN ELEGANTE: Verificar/crear symlink solo si no existe
+    symlink_path = "/ComfyUI"
+    if not (os.path.exists(symlink_path) or os.path.islink(symlink_path)):
+        os.symlink(COMFYUI_PATH, symlink_path)
+        print(f"🔗 Symlink creado: {symlink_path} → {COMFYUI_PATH}")
+    else:
+        print(f"ℹ️ {symlink_path} ya existe: se reutiliza (link o directorio).")
     
     print(f"📂 Changing directory to: {COMFYUI_PATH}")
     os.chdir(COMFYUI_PATH)
