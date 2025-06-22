@@ -337,6 +337,7 @@ def extract_output_files(outputs):
             return [{                           # ← lista con UN elemento
                 "type": "video",
                 "filename": dest.name,
+                "original_path": str(src),          # ← AÑADE ESTO
                 "file_size": f"{round(src.stat().st_size/1_048_576,2)} MB",
                 "node_id": TARGET_NODE,
                 "frame_rate": video_info.get("frame_rate", 32)
