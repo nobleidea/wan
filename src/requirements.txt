@@ -4,3 +4,4 @@ pillow
 opencv-python
 websocket-client
 numpy
+flask
