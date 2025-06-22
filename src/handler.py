@@ -313,21 +313,43 @@ def extract_output_files(outputs):
     try:
         output_files = []
         
-        # Procesar estructura oficial de ComfyUI
+        # 🔥 NUEVO: Específicamente buscar el nodo 94
+        target_nodes = ["94"]  # Nodo 94 que quieres
+        
         for node_id, node_output in outputs.items():
-            # ComfyUI usa 'gifs' para videos de VHS_VideoCombine
-            if "gifs" in node_output:
-                for video_info in node_output["gifs"]:
-                    if os.path.exists(video_info['fullpath']):
-                        output_files.append({
-                            "type": "video",
-                            "filename": video_info['filename'],
-                            "path": video_info['fullpath'],
-                            "node_id": node_id,
-                            "format": video_info.get('format', 'unknown'),
-                            "frame_rate": video_info.get('frame_rate', 'unknown')
-                        })
-                        print(f"✅ Found video: {video_info['filename']}")
+            if node_id in target_nodes:
+                print(f"🎯 Processing target node {node_id}")
+                
+                # ComfyUI usa 'gifs' para videos de VHS_VideoCombine
+                if "gifs" in node_output:
+                    for video_info in node_output["gifs"]:
+                        if os.path.exists(video_info['fullpath']):
+                            output_files.append({
+                                "type": "video",
+                                "filename": video_info['filename'],
+                                "path": video_info['fullpath'],
+                                "node_id": node_id,
+                                "format": video_info.get('format', 'mp4'),
+                                "frame_rate": video_info.get('frame_rate', 32)
+                            })
+                            print(f"✅ Found target video from node {node_id}: {video_info['filename']}")
+        
+        # Si no encontramos videos del nodo específico, buscar en todos
+        if not output_files:
+            print("⚠️ No videos found in target node, searching all nodes...")
+            for node_id, node_output in outputs.items():
+                if "gifs" in node_output:
+                    for video_info in node_output["gifs"]:
+                        if os.path.exists(video_info['fullpath']):
+                            output_files.append({
+                                "type": "video",
+                                "filename": video_info['filename'],
+                                "path": video_info['fullpath'],
+                                "node_id": node_id,
+                                "format": video_info.get('format', 'mp4'),
+                                "frame_rate": video_info.get('frame_rate', 'unknown')
+                            })
+                            print(f"✅ Found fallback video from node {node_id}: {video_info['filename']}")
         
         return output_files
         
@@ -351,62 +373,59 @@ def generate_video(input_image, prompt, negative_prompt="", width=832, height=48
     try:
         print("🎬 Starting video generation...")
         
-       # 1. Procesar imagen de entrada (híbrido)
+        # 1. Procesar imagen de entrada
         saved_filename = process_image_input(input_image)
         
         # 2. Cargar y modificar workflow
         print("📝 Loading and modifying workflow...")
         with open(WORKFLOW_PATH, 'r') as f:
             workflow = json.load(f)
-
-        # 🔥 NUEVO: Debug inicial
-        print("🔍 BEFORE modifications:")
-     #   debug_workflow_connections(workflow)
         
         modified_workflow = modify_workflow(workflow, saved_filename, prompt, negative_prompt, width, height)
-
-        # 🔥 NUEVO: Debug después de modify_workflow
-        print("🔍 AFTER modify_workflow:")
-      #  debug_workflow_connections(modified_workflow)
-
-                  
+        
         # 3. Ejecutar workflow
         print("⚡ Executing workflow...")
-        output_files = execute_workflow(modified_workflow) #Ejecutamos el workflow que hemos pasado por _ensure_defaults
+        output_files = execute_workflow(modified_workflow)
         
         if not output_files:
             raise Exception("No output files generated")
         
-        # 4. Crear URLs de descarga
-        print("🔗 Creating download URLs...")
-        results = []
+        # 4. 🔥 NUEVO: Convertir videos a Base64 y retornar
+        print("🎬 Converting videos to Base64...")
+        video_results = []
         
         for output_file in output_files:
-            # Crear URL de descarga directa
-            download_url = f"https://your-runpod-id.runpod.io/download/{output_file['filename']}"
-            
-            results.append({
-                "type": output_file["type"],
-                "filename": output_file["filename"],
-                "download_url": download_url,
-                "file_size": get_file_size(output_file["path"]),
-                "node_id": output_file["node_id"]
-            })
+            if output_file["type"] == "video":
+                # Leer el archivo de video y convertir a Base64
+                video_base64 = file_to_base64(output_file["path"])
+                
+                if video_base64:
+                    video_results.append({
+                        "filename": output_file["filename"],
+                        "video_base64": video_base64,
+                        "file_size": get_file_size(output_file["path"]),
+                        "node_id": output_file["node_id"],
+                        "format": output_file.get("format", "mp4"),
+                        "frame_rate": output_file.get("frame_rate", "unknown")
+                    })
+                    print(f"✅ Video converted to Base64: {output_file['filename']}")
         
-        print(f"✅ Video generation completed! Generated {len(results)} files")
+        if not video_results:
+            raise Exception("No videos were successfully converted to Base64")
         
+        print(f"✅ Video generation completed! Generated {len(video_results)} videos")
+        
+        # 🔥 RETORNO SIMPLIFICADO PARA RUNPOD
         return {
-            "status": "success",
-            "message": f"Video generation completed successfully",
-            "output_files": results,
-            "total_files": len(results)
+            "videos": video_results,
+            "total_videos": len(video_results),
+            "message": f"Successfully generated {len(video_results)} video(s)"
         }
         
     except Exception as e:
         print(f"❌ Video generation failed: {e}")
         return {
-            "status": "error",
-            "message": str(e)
+            "error": str(e)
         }
 
 def get_file_size(file_path):
@@ -554,8 +573,7 @@ def handler(event):
         job_input = event.get("input", {})
         
         if not job_input:
-            return {
-                "status": "error", 
+            return { 
                 "message": "No input provided"
             }
         
@@ -572,7 +590,6 @@ def handler(event):
         
     except Exception as e:
         return {
-            "status": "error",
             "message": str(e)
         }
 
