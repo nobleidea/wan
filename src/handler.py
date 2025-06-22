@@ -22,8 +22,11 @@ COMFYUI_URL = "http://localhost:8188"
 
 # 🔥 NUEVO: Configuración para RunPod output. Rutas absolutas para evitar problemas con cambios de directorio
 OUTPUT_DIR = Path(f"{COMFYUI_PATH}/output")           # Donde ComfyUI guarda
-RP_OUTPUT_DIR  = Path("/output_objects")   # <- raíz del contenedor 🔥 Network volume
+RP_OUTPUT_DIR  = Path("/workspace/output_objects")   # <- raíz del contenedor 🔥 Network volume
 RP_OUTPUT_DIR.mkdir(exist_ok=True, parents=True)
+
+
+TARGET_NODE = "94"          # manténlo como string. Nodo del que sacamos el vídeo en extract_outpu...
 
 def save_base64_image(base64_string, filename):
     """Guardar imagen base64 en el sistema de archivos con procesamiento PIL"""
@@ -308,70 +311,39 @@ def execute_workflow(workflow):
         print(f"❌ Error executing workflow: {e}")
         raise Exception(f"Failed to execute workflow: {e}")
 
+
+
 def extract_output_files(outputs):
-    """Extraer archivos de salida y copiarlos a output_objects para RunPod"""
-    try:
-        output_files = []
-        
-        # 🔍 DEBUG: Ver estructura real de outputs Y tipos de datos
-        print("🔍 DEBUG - Estructura completa de outputs:")
-        for node_id, node_output in outputs.items():
-            print(f"  Node {node_id} (tipo: {type(node_id)}): {list(node_output.keys())}")
-            
-            # 🔥 NUEVO: Verificar tanto string como int para nodo 94
-            if str(node_id) == "94" or node_id == 94:
-                print(f"    ✅ ENCONTRADO NODO 94!")
-                print(f"    Tipo de node_id: {type(node_id)}")
-                print(f"    Contenido completo: {node_output}")
-                print(f"    Claves disponibles: {list(node_output.keys())}")
-        
-        # Procesar estructura oficial de ComfyUI
-        for node_id, node_output in outputs.items():
-            # 🔥 MEJORADO: Verificar todas las variantes del nodo 94
-            is_target_node = (str(node_id) == "94" or node_id == 94)
-            
-            # Probar ambas claves posibles (videos primero, luego gifs como fallback)
-            for key in ["videos", "gifs"]:
-                if key in node_output:
-                    print(f"🔍 Procesando {key} del nodo {node_id}")
-                    
-                    for video_info in node_output[key]:
-                        src = Path(video_info['fullpath'])
-                        if src.exists():
-                            # 🔥 USAR RUTA ABSOLUTA (corregido del problema anterior)
-                            dest = RP_OUTPUT_DIR / f"{uuid.uuid4()}{src.suffix}"
-                            shutil.copy2(src, dest)
-                            
-                            output_files.append({
-                                "type": "video",
-                                "filename": dest.name,
-                                "original_path": str(src),
-                                "runpod_path": str(dest),
-                                "node_id": str(node_id),  # 🔥 NUEVO: Normalizar a string
-                                "source_key": key,
-                                "format": video_info.get('format', 'mp4'),
-                                "frame_rate": video_info.get('frame_rate', 32),
-                                "is_target_node": is_target_node  # Para debug
-                            })
-                            print(f"✅ Video copiado desde {key} (nodo {node_id}): {dest.name}")
-                            print(f"   Origen: {src}")
-                            print(f"   Destino en output_objects: {dest}")
-                        else:
-                            print(f"❌ Archivo no encontrado: {src}")
-        
-        if not output_files:
-            print("❌ WARNING: No se encontraron archivos de salida!")
-            print("🔍 Estructura completa para debug:")
-            import json
-            print(json.dumps(outputs, indent=2, default=str))
-        
-        return output_files
-        
-    except Exception as e:
-        print(f"❌ Error extracting output files: {e}")
-        import traceback
-        traceback.print_exc()
-        return []
+    """Copiar exclusivamente el primer .mp4 del nodo 94 a /workspace/output_objects"""
+    for node_id, node_output in outputs.items():
+        if str(node_id) != TARGET_NODE:          # ⬅️  SALTA si no es 94
+            continue
+
+        # 'videos' es la clave habitual; 'gifs' por si acaso
+        for key in ("videos", "gifs"):
+            if key not in node_output:
+                continue
+
+            video_info = node_output[key][0]     # sólo el primero
+            src  = Path(video_info["fullpath"])
+            if not src.exists():
+                raise FileNotFoundError(src)
+
+            dest = RP_OUTPUT_DIR / f"{uuid.uuid4()}{src.suffix}"
+            shutil.copy2(src, dest)
+
+            print(f"✅ Copiado vídeo del nodo 94 → {dest}")
+
+            return [{                           # ← lista con UN elemento
+                "type": "video",
+                "filename": dest.name,
+                "file_size": f"{round(src.stat().st_size/1_048_576,2)} MB",
+                "node_id": TARGET_NODE,
+                "frame_rate": video_info.get("frame_rate", 32)
+            }]
+
+    raise RuntimeError("No se encontró salida del nodo 94")
+
 
 def file_to_base64(file_path):
     """Convertir archivo a base64"""
