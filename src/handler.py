@@ -1,3 +1,4 @@
+from runpod.serverless.utils import rp_upload
 import runpod
 import os
 import sys
@@ -13,7 +14,7 @@ from PIL import Image
 import io
 import shutil
 
-from runpod.serverless.utils import rp_upload
+
 
 
 # Configuración
@@ -316,7 +317,7 @@ def execute_workflow(workflow):
 
 
 def extract_output_files(outputs):
-    """Usar rp_upload para obtener URLs descargables automáticamente"""
+    """Usar rp_upload.upload_image para obtener URLs descargables"""
     for node_id, node_output in outputs.items():
         if str(node_id) != TARGET_NODE:
             continue
@@ -330,10 +331,10 @@ def extract_output_files(outputs):
             if not src.exists():
                 raise FileNotFoundError(src)
 
-            # 🔥 USAR rp_upload - RunPod se encarga del resto
+            # 🔥 CORRECCIÓN: Usar upload_image (funciona para cualquier archivo)
             try:
                 job_id = str(uuid.uuid4())
-                video_url = rp_upload.upload_file(job_id, str(src))
+                video_url = rp_upload.upload_image(job_id, str(src))
                 
                 print(f"✅ Video subido con URL: {video_url}")
                 
@@ -348,7 +349,7 @@ def extract_output_files(outputs):
                 }]
                 
             except Exception as e:
-                print(f"❌ Error con rp_upload: {e}")
+                print(f"❌ Error con rp_upload.upload_image: {e}")
                 raise RuntimeError(f"No se pudo subir el archivo: {e}")
 
     raise RuntimeError("No se encontró salida del nodo 94")
