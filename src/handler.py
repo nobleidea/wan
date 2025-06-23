@@ -25,7 +25,7 @@ COMFYUI_URL = "http://localhost:8188"
 
 # 🔥 NUEVO: Configuración para RunPod output. Rutas absolutas para evitar problemas con cambios de directorio
 OUTPUT_DIR = Path(f"{COMFYUI_PATH}/output")           # Donde ComfyUI guarda
-RP_OUTPUT_DIR = Path("/output_objects")   # <- raíz del contenedor 🔥 Network volume
+RP_OUTPUT_DIR = Path("/runpod-volume/output_objects")   # <- raíz del contenedor 🔥 Network volume
 RP_OUTPUT_DIR.mkdir(exist_ok=True, parents=True)
 
 
@@ -317,9 +317,7 @@ def execute_workflow(workflow):
 
 
 def extract_output_files(outputs):
-    """Función híbrida: intenta rp_upload, si falla usa /output_objects"""
-    import traceback
-    
+    """Usar rp_upload.upload_image para obtener URLs descargables"""
     for node_id, node_output in outputs.items():
         if str(node_id) != TARGET_NODE:
             continue
@@ -333,79 +331,26 @@ def extract_output_files(outputs):
             if not src.exists():
                 raise FileNotFoundError(src)
 
-            print(f"🎬 Procesando video: {src.name} ({round(src.stat().st_size/1_048_576,2)} MB)")
-            
-            # 🔥 MÉTODO 1: Intentar rp_upload primero
+            # 🔥 CORRECCIÓN: Usar upload_image (funciona para cualquier archivo)
             try:
-                print("🔍 MÉTODO 1: Intentando rp_upload...")
-                print(f"🔍 Métodos disponibles en rp_upload: {dir(rp_upload)}")
-                
                 job_id = str(uuid.uuid4())
-                print(f"🔍 Job ID: {job_id}")
+                video_url = rp_upload.upload_image(job_id, str(src))
                 
-                result = rp_upload.upload_image(job_id, str(src))
-                print(f"🔍 Resultado rp_upload: {result}")
-                print(f"🔍 Tipo: {type(result)}")
-                
-                if result and str(result).startswith(('http://', 'https://')):
-                    print("✅ MÉTODO 1 EXITOSO: rp_upload devolvió URL válida")
-                    return [{
-                        "type": "video",
-                        "url": str(result),
-                        "filename": src.name,
-                        "file_size": f"{round(src.stat().st_size/1_048_576,2)} MB",
-                        "node_id": TARGET_NODE,
-                        "frame_rate": video_info.get("frame_rate", 32),
-                        "upload_method": "rp_upload"
-                    }]
-                else:
-                    print(f"⚠️ MÉTODO 1 FALLÓ: resultado inválido: {result}")
-                    
-            except Exception as e:
-                print(f"❌ MÉTODO 1 ERROR: {e}")
-                print("❌ Traceback completo:")
-                traceback.print_exc()
-            
-            # 🔥 MÉTODO 2: Fallback a /output_objects + filename solo
-            try:
-                print("🔍 MÉTODO 2: Usando /output_objects...")
-                
-                output_filename = f"{uuid.uuid4()}.mp4"
-                dest = RP_OUTPUT_DIR / output_filename
-                
-                # Copiar archivo
-                shutil.copy2(src, dest)
-                print(f"✅ Archivo copiado a: {dest}")
-                print(f"✅ Archivo existe: {dest.exists()}")
-                print(f"✅ Tamaño final: {dest.stat().st_size} bytes")
-                
-                # Retornar solo filename (para que RunPod detecte automáticamente)
-                print("✅ MÉTODO 2 COMPLETADO: Retornando filename para detección automática")
-                return [output_filename]  # ← Solo string, no dict
-                
-            except Exception as e:
-                print(f"❌ MÉTODO 2 ERROR: {e}")
-                traceback.print_exc()
-            
-            # 🔥 MÉTODO 3: Último recurso - dict con filename
-            try:
-                print("🔍 MÉTODO 3: Último recurso con dict...")
-                output_filename = f"{uuid.uuid4()}.mp4"
-                dest = RP_OUTPUT_DIR / output_filename
-                shutil.copy2(src, dest)
+                print(f"✅ Video subido con URL: {video_url}")
                 
                 return [{
                     "type": "video",
-                    "filename": output_filename,
+                    "url": video_url,                    # ← ESTO te dará la URL
+                    "filename": src.name,
+                    "original_path": str(src),
                     "file_size": f"{round(src.stat().st_size/1_048_576,2)} MB",
                     "node_id": TARGET_NODE,
-                    "frame_rate": video_info.get("frame_rate", 32),
-                    "upload_method": "output_objects_dict"
+                    "frame_rate": video_info.get("frame_rate", 32)
                 }]
                 
             except Exception as e:
-                print(f"❌ MÉTODO 3 ERROR: {e}")
-                raise RuntimeError(f"Todos los métodos fallaron: {e}")
+                print(f"❌ Error con rp_upload.upload_image: {e}")
+                raise RuntimeError(f"No se pudo subir el archivo: {e}")
 
     raise RuntimeError("No se encontró salida del nodo 94")
 
@@ -447,41 +392,31 @@ def generate_video(input_image, prompt, negative_prompt="", width=832, height=48
                   
         # 3. Ejecutar workflow
         print("⚡ Executing workflow...")
-        output_files = execute_workflow(modified_workflow)
+        output_files = execute_workflow(modified_workflow) #Ejecutamos el workflow que hemos pasado por _ensure_defaults
         
         if not output_files:
             raise Exception("No output files generated")
         
-        print(f"🔍 Output files recibidos: {output_files}")
-        print(f"🔍 Tipo de output_files: {type(output_files)}")
+        # 4. Preparar resultados (RunPod añadirá URLs automáticamente)
+        print("📦 Preparing results for RunPod...")
+        results = []
         
-        # 🔥 MANEJAR AMBOS FORMATOS
-        if isinstance(output_files, list):
-            if len(output_files) > 0:
-                first_item = output_files[0]
-                if isinstance(first_item, str):
-                    # Método 2: lista de strings (filenames)
-                    print("✅ Formato detectado: lista de filenames")
-                    return {
-                        "status": "success",
-                        "message": "Video generation completed successfully",
-                        "output": output_files  # RunPod convertirá a URLs
-                    }
-                elif isinstance(first_item, dict):
-                    # Método 1 o 3: lista de dicts
-                    print("✅ Formato detectado: lista de dicts")
-                    return {
-                        "status": "success",
-                        "message": "Video generation completed successfully",
-                        "output_files": output_files,
-                        "total_files": len(output_files)
-                    }
+        for output_file in output_files:
+            results.append({
+                "type": output_file["type"],
+                "filename": output_file["filename"],  # Nombre en output_objects
+                "file_size": get_file_size(output_file["original_path"]),
+                "node_id": output_file["node_id"],
+                "source_key": output_file.get("source_key", "unknown")  # Para debug
+            })
         
-        # Fallback
+        print(f"✅ Video generation completed! Generated {len(results)} files")
+        
         return {
             "status": "success",
-            "message": "Video generation completed successfully",
-            "output": output_files
+            "message": f"Video generation completed successfully",
+            "output_files": results,
+            "total_files": len(results)
         }
         
     except Exception as e:
