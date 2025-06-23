@@ -45,24 +45,53 @@ TARGET_NODE = "94"          # manténlo como string. Nodo del que sacamos el ví
 
 
 def upload_video(src: Path, job_id: str) -> str:
-    key = f"{job_id}/{src.name}"          # carpeta = job_id
-
-    # 1. Subida en una sola pieza (PUT)
-    with open(src, "rb") as fh:
-        s3.put_object(
-            Bucket      = BUCKET_NAME,
-            Key         = key,
-            Body        = fh,
-            ContentType = "video/mp4"
-        )
-
-    # 2. URL presignada (7 días)
-    return s3.generate_presigned_url(
-        "get_object",
-        Params     = {"Bucket": BUCKET_NAME, "Key": key},
-        ExpiresIn  = int(timedelta(days=7).total_seconds())
+    from botocore.config import Config
+    
+    # Configuración específica para RunPod S3
+    config = Config(
+        signature_version='s3v4',
+        region_name=REGION,
+        retries={'max_attempts': 4, 'mode': 'adaptive'}
     )
-
+    
+    # Recrear el cliente S3 con la configuración correcta
+    s3_client = boto3.client(
+        "s3",
+        region_name=REGION,
+        endpoint_url=ENDPOINT_URL,
+        aws_access_key_id=os.environ["BUCKET_ACCESS_KEY_ID"],
+        aws_secret_access_key=os.environ["BUCKET_SECRET_ACCESS_KEY"],
+        config=config  # ← Esta es la clave
+    )
+    
+    key = f"{job_id}/{src.name}"
+    
+    # 1. Subida del archivo
+    with open(src, "rb") as fh:
+        s3_client.put_object(
+            Bucket=BUCKET_NAME,
+            Key=key,
+            Body=fh,
+            ContentType="video/mp4"
+        )
+    
+    # 2. Generar URL presignada con la configuración correcta
+    try:
+        presigned_url = s3_client.generate_presigned_url(
+            'get_object',
+            Params={
+                'Bucket': BUCKET_NAME,
+                'Key': key
+            },
+            ExpiresIn=int(timedelta(days=7).total_seconds())
+        )
+        
+        print(f"✅ URL presignada generada: {presigned_url}")
+        return presigned_url
+        
+    except Exception as e:
+        print(f"❌ Error generando URL presignada: {e}")
+        raise Exception(f"Failed to generate presigned URL: {e}")
 
 def save_base64_image(base64_string, filename):
     """Guardar imagen base64 en el sistema de archivos con procesamiento PIL"""
