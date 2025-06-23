@@ -30,7 +30,7 @@ RUN pip install --no-cache-dir --pre torch torchvision torchaudio \
 # Instalar dependencias base
 # Instalar dependencias base (quitamos opencv-python, ponemos la versión compatible)
 RUN pip install --no-cache-dir \
-    runpod \
+    runpod>=1.7.12 \
     websocket-client \
     requests \
     pillow \
