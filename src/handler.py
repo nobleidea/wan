@@ -13,9 +13,21 @@ from pathlib import Path
 from PIL import Image
 import io
 import shutil
+import boto3
+from datetime import timedelta
 
 
+ENDPOINT_URL = os.environ["BUCKET_ENDPOINT_URL"]   
+BUCKET_NAME  = os.environ["BUCKET_NAME"]          
+REGION       = os.getenv("AWS_REGION", "EU-RO-1")
 
+s3 = boto3.client(
+    "s3",
+    region_name           = REGION,
+    endpoint_url          = ENDPOINT_URL,
+    aws_access_key_id     = os.environ["BUCKET_ACCESS_KEY_ID"],
+    aws_secret_access_key = os.environ["BUCKET_SECRET_ACCESS_KEY"],
+)
 
 # Configuración
 WORKSPACE_PATH = "/runpod-volume"
@@ -30,6 +42,27 @@ RP_OUTPUT_DIR.mkdir(exist_ok=True, parents=True)
 
 
 TARGET_NODE = "94"          # manténlo como string. Nodo del que sacamos el vídeo en extract_outpu...
+
+
+def upload_video(src: Path, job_id: str) -> str:
+    key = f"{job_id}/{src.name}"          # carpeta = job_id
+
+    # 1. Subida en una sola pieza (PUT)
+    with open(src, "rb") as fh:
+        s3.put_object(
+            Bucket      = BUCKET_NAME,
+            Key         = key,
+            Body        = fh,
+            ContentType = "video/mp4"
+        )
+
+    # 2. URL presignada (7 días)
+    return s3.generate_presigned_url(
+        "get_object",
+        Params     = {"Bucket": BUCKET_NAME, "Key": key},
+        ExpiresIn  = int(timedelta(days=7).total_seconds())
+    )
+
 
 def save_base64_image(base64_string, filename):
     """Guardar imagen base64 en el sistema de archivos con procesamiento PIL"""
@@ -340,13 +373,7 @@ def extract_output_files(job_id, outputs): # <-- Acepta job_id
                 print(f"🚀 Subiendo {src.name} al bucket con el job_id: {job_id}")
                 
                 # --- Usando la llamada a la función 100% correcta ---
-                video_url = rp_upload.upload_file_to_bucket(
-                    file_name=src.name,
-                    file_location=str(src),
-                    bucket_name   = os.getenv("BUCKET_NAME"),
-                    prefix=job_id,
-                    extra_args    = {"ContentType": "video/mp4"}   # ← usar extra_args
-                )
+                video_url = upload_video(src, job_id)
                 # ----------------------------------------------------
                 
                 print(f"✅ Video subido exitosamente. URL: {video_url}")
