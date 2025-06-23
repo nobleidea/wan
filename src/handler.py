@@ -337,16 +337,22 @@ def extract_output_files(job_id, outputs): # <-- Acepta job_id
 
             # Sube el archivo a RunPod y obtén la URL segura
             try:
-                               
-                # Sube el archivo y obtén la URL. Usamos job_id real
-                video_url = rp_upload.upload_image(job_id, str(src))
+                print(f"🚀 Subiendo {src.name} al bucket con el job_id: {job_id}")
+                
+                # --- Usando la llamada a la función 100% correcta ---
+                video_url = rp_upload.upload_file_to_bucket(
+                    file_name=src.name,
+                    file_location=str(src),
+                    prefix=job_id,
+                    content_type="video/mp4"  # Parámetro correcto
+                )
+                # ----------------------------------------------------
                 
                 print(f"✅ Video subido exitosamente. URL: {video_url}")
                 
-                # Devuelve un diccionario con la URL y otros metadatos
                 return {
                     "type": "video",
-                    "url": video_url,  # <- ¡ESTA ES LA URL PÚBLICA!
+                    "url": video_url,
                     "filename": src.name,
                     "original_path": str(src),
                     "file_size": f"{round(src.stat().st_size / 1_048_576, 2)} MB",
