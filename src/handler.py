@@ -45,53 +45,62 @@ TARGET_NODE = "94"          # manténlo como string. Nodo del que sacamos el ví
 
 
 def upload_video_hybrid(src: Path, job_id: str) -> str:
-    """Función híbrida corregida - VERSIÓN FINAL con bucket correcto"""
+    """Función corregida usando las funciones correctas para serverless"""
     
-    # MÉTODO 1: RunPod upload con bucket específico
-    print("🔄 Intentando RunPod upload nativo...")
+    print(f"🚀 Subiendo {src.name} ({src.stat().st_size / 1_048_576:.2f} MB)")
+    
+    # MÉTODO 1: upload_image (solo 2 parámetros)
+    print("🔄 Intentando rp_upload.upload_image...")
     try:
-        upload_result = rp_upload.upload_file_to_bucket(
-            file_name=src.name,
-            file_location=str(src),
-            bucket_creds=None,
-            bucket_name=BUCKET_NAME,  # ← ESPECIFICAR TU BUCKET: "z41252jtk8"
-            prefix=job_id
-        )
+        upload_result = rp_upload.upload_image(job_id, str(src))
         
-        print(f"🔍 rp_upload resultado: {upload_result} (tipo: {type(upload_result)})")
+        print(f"🔍 upload_image resultado: {upload_result}")
+        print(f"🔍 Tipo: {type(upload_result)}")
         
         if upload_result:
             if isinstance(upload_result, str) and upload_result.startswith('http'):
-                print(f"✅ RunPod upload exitoso: {upload_result}")
+                print(f"✅ upload_image exitoso: {upload_result}")
                 return upload_result
             else:
-                print(f"⚠️ Resultado inesperado: {upload_result}")
+                # Puede devolver solo el nombre del archivo o path relativo
                 result_str = str(upload_result)
+                print(f"🔍 upload_image devolvió string: {result_str}")
+                
+                # Si contiene una URL, extraerla
                 if 'http' in result_str:
-                    print(f"✅ URL extraída: {result_str}")
+                    print(f"✅ URL encontrada en resultado: {result_str}")
                     return result_str
+                else:
+                    print(f"⚠️ upload_image devolvió: {result_str}")
         
     except Exception as e:
-        print(f"❌ RunPod upload falló: {e}")
+        print(f"❌ upload_image falló: {e}")
+        import traceback
+        print(f"❌ Traceback: {traceback.format_exc()}")
     
-    # MÉTODO 2: Intentar sin prefix pero con bucket correcto
-    print("🔄 Intentando RunPod upload sin prefix...")
+    # MÉTODO 2: upload_in_memory_object 
+    print("🔄 Intentando upload_in_memory_object...")
     try:
-        upload_result = rp_upload.upload_file_to_bucket(
-            file_name=src.name,
-            file_location=str(src),
-            bucket_creds=None,
-            bucket_name=BUCKET_NAME  # ← ESPECIFICAR TU BUCKET: "z41252jtk8"
+        with open(src, 'rb') as f:
+            file_data = f.read()
+        
+        # Según los logs anteriores, esta función existe
+        upload_result = rp_upload.upload_in_memory_object(
+            job_id,
+            file_data,
+            src.name
         )
         
+        print(f"🔍 upload_in_memory_object resultado: {upload_result}")
+        
         if upload_result and isinstance(upload_result, str) and upload_result.startswith('http'):
-            print(f"✅ RunPod upload exitoso (sin prefix): {upload_result}")
+            print(f"✅ upload_in_memory_object exitoso: {upload_result}")
             return upload_result
             
     except Exception as e:
-        print(f"❌ RunPod upload sin prefix falló: {e}")
+        print(f"❌ upload_in_memory_object falló: {e}")
     
-    # MÉTODO 3: Fallback
+    # MÉTODO 3: Fallback local
     print("🔄 Fallback: archivo local...")
     try:
         output_dir = Path("/runpod-volume/outputs")
