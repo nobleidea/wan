@@ -343,6 +343,7 @@ def extract_output_files(job_id, outputs): # <-- Acepta job_id
                 video_url = rp_upload.upload_file_to_bucket(
                     file_name=src.name,
                     file_location=str(src),
+                    bucket_name   = os.getenv("BUCKET_NAME"),
                     prefix=job_id,
                     extra_args    = {"ContentType": "video/mp4"}   # ← usar extra_args
                 )
