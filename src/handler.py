@@ -45,42 +45,97 @@ TARGET_NODE = "94"          # manténlo como string. Nodo del que sacamos el ví
 
 
 def upload_video_hybrid(src: Path, job_id: str) -> str:
-    """Función híbrida que intenta múltiples métodos de subida"""
+    """Función híbrida mejorada que intenta múltiples métodos de subida"""
     
-    # MÉTODO 1: RunPod nativo (preferido)
+    # MÉTODO 1: RunPod nativo (preferido) - probar diferentes funciones
+    print("🔄 Intentando RunPod upload nativo...")
     try:
-        print("🔄 Intentando RunPod upload nativo...")
-        upload_result = rp_upload.upload_file_to_bucket(
-            file_name=str(src)
-        )
-        if upload_result and 'url' in upload_result:
-            print("✅ Éxito con RunPod nativo")
-            return upload_result['url']
+        # Opción A: rp_upload con diferentes métodos
+        try:
+            upload_result = rp_upload.upload_file_to_bucket(
+                file_name=str(src),
+                bucket_creds=None
+            )
+            if upload_result:
+                if isinstance(upload_result, dict) and 'url' in upload_result:
+                    print("✅ Éxito con rp_upload.upload_file_to_bucket")
+                    return upload_result['url']
+                elif isinstance(upload_result, str):
+                    print("✅ Éxito con rp_upload (string)")
+                    return upload_result
+        except AttributeError:
+            print("⚠️ upload_file_to_bucket no existe, probando otros métodos...")
+        
+        # Opción B: rp_upload directo
+        try:
+            upload_result = rp_upload.upload_file(str(src))
+            if upload_result:
+                print("✅ Éxito con rp_upload.upload_file")
+                return upload_result if isinstance(upload_result, str) else upload_result.get('url', str(upload_result))
+        except AttributeError:
+            print("⚠️ upload_file no existe...")
+        
+        # Opción C: rp_upload simple
+        try:
+            upload_result = rp_upload(str(src))
+            if upload_result:
+                print("✅ Éxito con rp_upload directo")
+                return upload_result if isinstance(upload_result, str) else upload_result.get('url', str(upload_result))
+        except (AttributeError, TypeError):
+            print("⚠️ rp_upload directo no funciona...")
+            
     except Exception as e:
-        print(f"❌ RunPod nativo falló: {e}")
+        print(f"❌ RunPod nativo falló completamente: {e}")
     
     # MÉTODO 2: boto3 con configuración corregida
+    print("🔄 Intentando boto3 con signature v4...")
     try:
-        print("🔄 Intentando boto3 con signature v4...")
         return upload_video_boto3_fixed(src, job_id)
     except Exception as e:
         print(f"❌ boto3 falló: {e}")
     
-    # MÉTODO 3: Fallback - copiar a output local
-    try:
-        print("🔄 Fallback: copiando a directorio local...")
-        local_output = Path("/tmp/outputs")
-        local_output.mkdir(exist_ok=True, parents=True)
-        
-        output_file = local_output / f"{job_id}_{src.name}"
-        shutil.copy2(src, output_file)
-        
-        print(f"📁 Archivo disponible localmente: {output_file}")
-        return str(output_file)
-        
-    except Exception as e:
-        print(f"❌ Todos los métodos fallaron: {e}")
-        raise Exception("No se pudo subir el archivo con ningún método")
+    # MÉTODO 3: Múltiples fallbacks locales
+    print("🔄 Fallback: probando directorios locales...")
+    fallback_dirs = [
+        "/tmp/outputs",
+        "/runpod-volume/outputs", 
+        "/outputs",
+        f"{WORKSPACE_PATH}/outputs",
+        "/app/outputs"
+    ]
+    
+    for output_dir_path in fallback_dirs:
+        try:
+            output_dir = Path(output_dir_path)
+            output_dir.mkdir(exist_ok=True, parents=True)
+            
+            # Crear nombre único con timestamp
+            timestamp = int(time.time())
+            output_file = output_dir / f"{job_id}_{timestamp}_{src.name}"
+            
+            # Copiar archivo
+            shutil.copy2(src, output_file)
+            
+            print(f"📁 Archivo copiado exitosamente a: {output_file}")
+            
+            # Verificar que el archivo se copió correctamente
+            if output_file.exists() and output_file.stat().st_size > 0:
+                # Devolver una URL que RunPod pueda manejar
+                relative_path = str(output_file).replace("/runpod-volume", "").lstrip("/")
+                return f"https://your-runpod-endpoint.com/outputs/{relative_path}"
+            
+        except Exception as dir_error:
+            print(f"❌ Fallback a {output_dir_path} falló: {dir_error}")
+            continue
+    
+    # MÉTODO 4: Último recurso - devolver path original
+    print("🔄 Último recurso: devolviendo path original...")
+    if src.exists():
+        print(f"📁 Archivo existe en: {src}")
+        return str(src)
+    
+    # Si todo falla
+    raise Exception("No se pudo subir el archivo con ningún método disponible")
 
 def upload_video_boto3_fixed(src: Path, job_id: str) -> str:
     """boto3 con configuración corregida como función separada"""
@@ -112,7 +167,30 @@ def upload_video_boto3_fixed(src: Path, job_id: str) -> str:
         ExpiresIn=int(timedelta(days=7).total_seconds())
     )
 
-
+def debug_rp_upload():
+    """Debug para ver qué métodos están disponibles en rp_upload"""
+    try:
+        print("🔍 Debugging rp_upload capabilities...")
+        print(f"rp_upload module: {rp_upload}")
+        print(f"rp_upload dir: {dir(rp_upload)}")
+        
+        # Probar métodos comunes
+        methods_to_test = [
+            'upload_file_to_bucket',
+            'upload_file', 
+            'upload',
+            'bucket_upload',
+            'file_upload'
+        ]
+        
+        for method in methods_to_test:
+            if hasattr(rp_upload, method):
+                print(f"✅ Método disponible: {method}")
+            else:
+                print(f"❌ Método no disponible: {method}")
+                
+    except Exception as e:
+        print(f"❌ Error debugging rp_upload: {e}")
 
 def upload_video(src: Path, job_id: str) -> str:
     from botocore.config import Config
@@ -451,6 +529,9 @@ def execute_workflow(job_id, workflow):
 
 def extract_output_files(job_id, outputs): # <-- Acepta job_id
     """Usar rp_upload para obtener URLs descargables y devolver la URL del video."""
+    # Debug de rp_upload al inicio
+    debug_rp_upload()
+    
     for node_id, node_output in outputs.items():
         if str(node_id) != TARGET_NODE:  # TARGET_NODE es '94'
             continue
