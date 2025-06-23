@@ -251,7 +251,7 @@ def debug_workflow_connections(workflow: dict):
     print("🔍 === END DEBUG ===\n")
 
 
-def execute_workflow(workflow):
+def execute_workflow(job_id, workflow):
     """Ejecutar workflow en ComfyUI y esperar resultado"""
     try:
         # Generar ID único para este prompt
@@ -291,7 +291,8 @@ def execute_workflow(workflow):
                     # Verificar si terminó
                     if "outputs" in execution_data:
                         print("✅ Workflow execution completed!")
-                        return extract_output_files(execution_data["outputs"])
+                        # Pasa el job_id a extract_output_files
+                        return extract_output_files(job_id, execution_data["outputs"]) # <-- AÑADE job_id
                     
                     # Verificar si hay error
                     elif "status" in execution_data:
@@ -316,7 +317,7 @@ def execute_workflow(workflow):
 
 
 
-def extract_output_files(outputs):
+def extract_output_files(job_id, outputs): # <-- Acepta job_id
     """Usar rp_upload para obtener URLs descargables y devolver la URL del video."""
     for node_id, node_output in outputs.items():
         if str(node_id) != TARGET_NODE:  # TARGET_NODE es '94'
@@ -336,10 +337,8 @@ def extract_output_files(outputs):
 
             # Sube el archivo a RunPod y obtén la URL segura
             try:
-                # Genera un ID de trabajo único para la carga
-                job_id = str(uuid.uuid4())
-                
-                # Sube el archivo y obtén la URL
+                               
+                # Sube el archivo y obtén la URL. Usamos job_id real
                 video_url = rp_upload.upload_image(job_id, str(src))
                 
                 print(f"✅ Video subido exitosamente. URL: {video_url}")
@@ -374,7 +373,7 @@ def file_to_base64(file_path):
         print(f"❌ Error converting file to base64: {e}")
         return None
 
-def generate_video(input_image, prompt, negative_prompt="", width=832, height=480):
+def generate_video(job_id, input_image, prompt, negative_prompt="", width=832, height=480):
     """Generar video usando el workflow completo"""
     try:
         print("🎬 Starting video generation...")
@@ -399,7 +398,7 @@ def generate_video(input_image, prompt, negative_prompt="", width=832, height=48
 
                   
         # 3. Ejecutar workflow y obtener el diccionario con la URL
-        output_data = execute_workflow(modified_workflow)
+        output_data = execute_workflow(job_id, modified_workflow) # <-- AÑADE job_id
         
         if not output_data or "url" not in output_data:
             raise Exception("No se generó la URL del video de salida")
@@ -538,6 +537,7 @@ def handler(event):
         
         # Obtener inputs
         job_input = event.get("input", {})
+        job_id = event.get("id") # <-- AÑADE ESTA LÍNEA
         
         if not job_input:
             return { 
@@ -546,6 +546,7 @@ def handler(event):
         
         # Generar video
         result = generate_video(
+            job_id, # <-- AÑADE ESTE ARGUMENTO
             job_input.get("image", ""),
             job_input.get("prompt", ""),
             job_input.get("negative_prompt", ""),
