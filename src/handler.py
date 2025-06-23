@@ -317,42 +317,50 @@ def execute_workflow(workflow):
 
 
 def extract_output_files(outputs):
-    """Usar rp_upload.upload_image para obtener URLs descargables"""
+    """Usar rp_upload para obtener URLs descargables y devolver la URL del video."""
     for node_id, node_output in outputs.items():
-        if str(node_id) != TARGET_NODE:
+        if str(node_id) != TARGET_NODE:  # TARGET_NODE es '94'
             continue
 
+        # La salida puede estar en 'videos' o 'gifs', sé flexible
         for key in ("videos", "gifs"):
             if key not in node_output:
                 continue
 
             video_info = node_output[key][0]
+            # La ruta completa del archivo generado en el contenedor
             src = Path(video_info["fullpath"])
-            if not src.exists():
-                raise FileNotFoundError(src)
 
-            # 🔥 CORRECCIÓN: Usar upload_image (funciona para cualquier archivo)
+            if not src.exists():
+                raise FileNotFoundError(f"El archivo de video no se encontró en la ruta: {src}")
+
+            # Sube el archivo a RunPod y obtén la URL segura
             try:
+                # Genera un ID de trabajo único para la carga
                 job_id = str(uuid.uuid4())
+                
+                # Sube el archivo y obtén la URL
                 video_url = rp_upload.upload_image(job_id, str(src))
                 
-                print(f"✅ Video subido con URL: {video_url}")
+                print(f"✅ Video subido exitosamente. URL: {video_url}")
                 
-                return [{
+                # Devuelve un diccionario con la URL y otros metadatos
+                return {
                     "type": "video",
-                    "url": video_url,                    # ← ESTO te dará la URL
+                    "url": video_url,  # <- ¡ESTA ES LA URL PÚBLICA!
                     "filename": src.name,
                     "original_path": str(src),
-                    "file_size": f"{round(src.stat().st_size/1_048_576,2)} MB",
-                    "node_id": TARGET_NODE,
-                    "frame_rate": video_info.get("frame_rate", 32)
-                }]
+                    "file_size": f"{round(src.stat().st_size / 1_048_576, 2)} MB",
+                    "node_id": TARGET_NODE
+                }
                 
             except Exception as e:
-                print(f"❌ Error con rp_upload.upload_image: {e}")
-                raise RuntimeError(f"No se pudo subir el archivo: {e}")
+                print(f"❌ Error al subir el video con rp_upload: {e}")
+                # Si la subida falla, es un error crítico
+                raise RuntimeError(f"No se pudo subir el archivo de video: {e}")
 
-    raise RuntimeError("No se encontró salida del nodo 94")
+    # Si no se encuentra el nodo de salida, lanza un error
+    raise RuntimeError(f"No se encontró ninguna salida de video en el nodo esperado ({TARGET_NODE})")
 
 
 def file_to_base64(file_path):
@@ -390,37 +398,22 @@ def generate_video(input_image, prompt, negative_prompt="", width=832, height=48
       #  debug_workflow_connections(modified_workflow)
 
                   
-        # 3. Ejecutar workflow
-        print("⚡ Executing workflow...")
-        output_files = execute_workflow(modified_workflow) #Ejecutamos el workflow que hemos pasado por _ensure_defaults
+        # 3. Ejecutar workflow y obtener el diccionario con la URL
+        output_data = execute_workflow(modified_workflow)
         
-        if not output_files:
-            raise Exception("No output files generated")
+        if not output_data or "url" not in output_data:
+            raise Exception("No se generó la URL del video de salida")
         
-        # 4. Preparar resultados (RunPod añadirá URLs automáticamente)
-        print("📦 Preparing results for RunPod...")
-        results = []
+        print(f"✅ Generación de video completada. URL: {output_data['url']}")
         
-        for output_file in output_files:
-            results.append({
-                "type": output_file["type"],
-                "filename": output_file["filename"],  # Nombre en output_objects
-                "file_size": get_file_size(output_file["original_path"]),
-                "node_id": output_file["node_id"],
-                "source_key": output_file.get("source_key", "unknown")  # Para debug
-            })
-        
-        print(f"✅ Video generation completed! Generated {len(results)} files")
-        
+        # 4. Devuelve el resultado incluyendo el diccionario completo de salida
         return {
             "status": "success",
-            "message": f"Video generation completed successfully",
-            "output_files": results,
-            "total_files": len(results)
+            "output": output_data  # Devuelve directamente el objeto con la URL
         }
         
     except Exception as e:
-        print(f"❌ Video generation failed: {e}")
+        print(f"❌ La generación de video falló: {e}")
         return {
             "status": "error",
             "message": str(e)
