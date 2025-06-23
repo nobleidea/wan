@@ -45,62 +45,67 @@ TARGET_NODE = "94"          # manténlo como string. Nodo del que sacamos el ví
 
 
 def upload_video_hybrid(src: Path, job_id: str) -> str:
-    """Función híbrida corregida - versión final"""
+    """Función híbrida corregida - VERSIÓN FINAL"""
     
     # MÉTODO 1: RunPod upload con sintaxis correcta
     print("🔄 Intentando RunPod upload nativo...")
     try:
         upload_result = rp_upload.upload_file_to_bucket(
-            file_location=str(src),  # ← file_location no file_name
-            bucket_creds=None
+            file_name=src.name,        # nombre del archivo (vid_00085.mp4)
+            file_location=str(src),    # ruta completa
+            bucket_creds=None,         # usar credenciales automáticas
+            prefix=job_id              # carpeta con job_id
         )
         
+        print(f"🔍 rp_upload resultado: {upload_result} (tipo: {type(upload_result)})")
+        
         if upload_result:
-            if isinstance(upload_result, dict):
-                url = upload_result.get('url') or upload_result.get('download_url') or upload_result.get('file_url')
-                if url:
-                    print(f"✅ RunPod upload exitoso: {url}")
-                    return url
-            elif isinstance(upload_result, str) and upload_result.startswith('http'):
+            if isinstance(upload_result, str) and (upload_result.startswith('http') or upload_result.startswith('/')):
                 print(f"✅ RunPod upload exitoso: {upload_result}")
                 return upload_result
-        
-        print(f"⚠️ rp_upload resultado inesperado: {upload_result}")
+            else:
+                print(f"⚠️ Resultado inesperado, intentando interpretar: {upload_result}")
+                # Si devuelve algo diferente, intentar convertir a string
+                result_str = str(upload_result)
+                if 'http' in result_str:
+                    print(f"✅ URL extraída: {result_str}")
+                    return result_str
         
     except Exception as e:
         print(f"❌ RunPod upload falló: {e}")
     
-    # MÉTODO 2: bucket_upload alternativo
-    print("🔄 Intentando bucket_upload...")
+    # MÉTODO 2: Intentar sin prefix
+    print("🔄 Intentando RunPod upload sin prefix...")
     try:
-        upload_result = rp_upload.bucket_upload(str(src))
-        if upload_result and isinstance(upload_result, str) and upload_result.startswith('http'):
-            print(f"✅ bucket_upload exitoso: {upload_result}")
+        upload_result = rp_upload.upload_file_to_bucket(
+            file_name=src.name,
+            file_location=str(src)
+        )
+        
+        if upload_result and isinstance(upload_result, str):
+            print(f"✅ RunPod upload exitoso (sin prefix): {upload_result}")
             return upload_result
+            
     except Exception as e:
-        print(f"❌ bucket_upload falló: {e}")
+        print(f"❌ RunPod upload sin prefix falló: {e}")
     
-    # MÉTODO 3: Path local que RunPod puede servir
-    print("🔄 Fallback: archivo local accesible...")
+    # MÉTODO 3: Fallback que ya sabemos que funciona
+    print("🔄 Fallback: archivo local...")
     try:
-        # RunPod puede servir archivos desde ciertos directorios
-        shared_dir = Path("/runpod-volume/outputs")
-        shared_dir.mkdir(exist_ok=True, parents=True)
+        output_dir = Path("/runpod-volume/outputs")
+        output_dir.mkdir(exist_ok=True, parents=True)
         
-        # Copiar con nombre descriptivo
-        shared_file = shared_dir / f"video_{job_id}_{int(time.time())}_{src.name}"
-        shutil.copy2(src, shared_file)
+        timestamp = int(time.time())
+        output_file = output_dir / f"video_{job_id}_{timestamp}_{src.name}"
+        shutil.copy2(src, output_file)
         
-        if shared_file.exists():
-            print(f"📁 Video disponible en: {shared_file}")
-            # URL que RunPod puede servir
-            return f"/outputs/{shared_file.name}"
+        if output_file.exists():
+            print(f"📁 Video copiado exitosamente: {output_file}")
+            return f"/outputs/{output_file.name}"
     
     except Exception as e:
         print(f"❌ Fallback falló: {e}")
     
-    # Último recurso
-    print(f"🔄 Último recurso: {src}")
     return str(src)
 
 def debug_rp_upload_detailed():
