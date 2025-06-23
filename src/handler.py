@@ -344,7 +344,7 @@ def extract_output_files(job_id, outputs): # <-- Acepta job_id
                     file_name=src.name,
                     file_location=str(src),
                     prefix=job_id,
-                    content_type="video/mp4"  # Parámetro correcto
+                    extra_args    = {"ContentType": "video/mp4"}   # ← usar extra_args
                 )
                 # ----------------------------------------------------
                 
