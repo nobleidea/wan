@@ -44,6 +44,76 @@ RP_OUTPUT_DIR.mkdir(exist_ok=True, parents=True)
 TARGET_NODE = "94"          # manténlo como string. Nodo del que sacamos el vídeo en extract_outpu...
 
 
+def upload_video_hybrid(src: Path, job_id: str) -> str:
+    """Función híbrida que intenta múltiples métodos de subida"""
+    
+    # MÉTODO 1: RunPod nativo (preferido)
+    try:
+        print("🔄 Intentando RunPod upload nativo...")
+        upload_result = rp_upload.upload_file_to_bucket(
+            file_name=str(src)
+        )
+        if upload_result and 'url' in upload_result:
+            print("✅ Éxito con RunPod nativo")
+            return upload_result['url']
+    except Exception as e:
+        print(f"❌ RunPod nativo falló: {e}")
+    
+    # MÉTODO 2: boto3 con configuración corregida
+    try:
+        print("🔄 Intentando boto3 con signature v4...")
+        return upload_video_boto3_fixed(src, job_id)
+    except Exception as e:
+        print(f"❌ boto3 falló: {e}")
+    
+    # MÉTODO 3: Fallback - copiar a output local
+    try:
+        print("🔄 Fallback: copiando a directorio local...")
+        local_output = Path("/tmp/outputs")
+        local_output.mkdir(exist_ok=True, parents=True)
+        
+        output_file = local_output / f"{job_id}_{src.name}"
+        shutil.copy2(src, output_file)
+        
+        print(f"📁 Archivo disponible localmente: {output_file}")
+        return str(output_file)
+        
+    except Exception as e:
+        print(f"❌ Todos los métodos fallaron: {e}")
+        raise Exception("No se pudo subir el archivo con ningún método")
+
+def upload_video_boto3_fixed(src: Path, job_id: str) -> str:
+    """boto3 con configuración corregida como función separada"""
+    from botocore.config import Config
+    
+    config = Config(signature_version='s3v4')
+    s3_client = boto3.client(
+        's3',
+        region_name=REGION,
+        endpoint_url=ENDPOINT_URL,
+        aws_access_key_id=os.environ["BUCKET_ACCESS_KEY_ID"],
+        aws_secret_access_key=os.environ["BUCKET_SECRET_ACCESS_KEY"],
+        config=config
+    )
+    
+    key = f"{job_id}/{src.name}"
+    
+    with open(src, "rb") as fh:
+        s3_client.put_object(
+            Bucket=BUCKET_NAME,
+            Key=key,
+            Body=fh,
+            ContentType="video/mp4"
+        )
+    
+    return s3_client.generate_presigned_url(
+        'get_object',
+        Params={'Bucket': BUCKET_NAME, 'Key': key},
+        ExpiresIn=int(timedelta(days=7).total_seconds())
+    )
+
+
+
 def upload_video(src: Path, job_id: str) -> str:
     from botocore.config import Config
     
@@ -402,7 +472,7 @@ def extract_output_files(job_id, outputs): # <-- Acepta job_id
                 print(f"🚀 Subiendo {src.name} al bucket con el job_id: {job_id}")
                 
                 # --- Usando la llamada a la función 100% correcta ---
-                video_url = upload_video(src, job_id)
+                video_url = upload_video_hybrid(src, job_id)
                 # ----------------------------------------------------
                 
                 print(f"✅ Video subido exitosamente. URL: {video_url}")
