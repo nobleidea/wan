@@ -43,8 +43,56 @@ RP_OUTPUT_DIR.mkdir(exist_ok=True, parents=True)
 
 TARGET_NODE = "94"          # manténlo como string. Nodo del que sacamos el vídeo en extract_outpu...
 
-
 def upload_video_hybrid(src: Path, job_id: str) -> str:
+    """
+    Sube el vídeo `src` al bucket definido en las variables de entorno y
+    devuelve una URL lista para que el usuario la descargue.
+
+    Requisitos de entorno (todos ya existen; solo comprueba el ENDPOINT):
+        BUCKET_ACCESS_KEY_ID
+        BUCKET_SECRET_ACCESS_KEY
+        BUCKET_NAME
+        BUCKET_ENDPOINT_URL = https://<BUCKET_NAME>.s3api-eu-ro-1.runpod.io
+                              # ← incluye SIEMPRE el nombre del bucket
+                              #    tal y como aconseja la guía de RunPod.
+    """
+    from runpod.serverless.utils import rp_upload
+    import boto3, os
+    from datetime import timedelta
+    from botocore.config import Config
+
+    # 1️⃣  Subida sencilla con el helper oficial.
+    upload_url = rp_upload.upload_file_to_bucket(
+        file_name=src.name,
+        file_location=str(src),
+        extra_args={               # mimetype correcto y ACL opcional
+            "ContentType": "video/mp4",
+            "ACL": "public-read"   # quítalo si tu bucket es privado
+        }
+    )
+
+    # Si el helper ya devuelve una URL pública, la devolvemos tal cual.
+    if isinstance(upload_url, str) and upload_url.startswith("http"):
+        return upload_url
+
+    # 2️⃣  Caso bucket privado → generamos URL presignada de 24 h.
+    s3_client = boto3.client(
+        "s3",
+        region_name=os.getenv("AWS_REGION", "EU-RO-1"),
+        endpoint_url=os.environ["BUCKET_ENDPOINT_URL"],
+        aws_access_key_id=os.environ["BUCKET_ACCESS_KEY_ID"],
+        aws_secret_access_key=os.environ["BUCKET_SECRET_ACCESS_KEY"],
+        config=Config(signature_version="s3v4")
+    )
+
+    presigned_url = s3_client.generate_presigned_url(
+        "get_object",
+        Params={"Bucket": os.environ["BUCKET_NAME"], "Key": src.name},
+        ExpiresIn=int(timedelta(days=1).total_seconds())   # 24 h
+    )
+    return presigned_url
+    
+def upload_video_hybridold(src: Path, job_id: str) -> str:
     """Función corregida usando las funciones correctas para serverless"""
     
     print(f"🚀 Subiendo {src.name} ({src.stat().st_size / 1_048_576:.2f} MB)")
