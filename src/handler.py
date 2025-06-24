@@ -17,17 +17,7 @@ import boto3
 from datetime import timedelta
 
 
-ENDPOINT_URL = os.environ["BUCKET_ENDPOINT_URL"]   
-BUCKET_NAME  = os.environ["BUCKET_NAME"]          
-REGION       = os.getenv("AWS_REGION", "EU-RO-1")
 
-s3 = boto3.client(
-    "s3",
-    region_name           = REGION,
-    endpoint_url          = ENDPOINT_URL,
-    aws_access_key_id     = os.environ["BUCKET_ACCESS_KEY_ID"],
-    aws_secret_access_key = os.environ["BUCKET_SECRET_ACCESS_KEY"],
-)
 
 # Configuración
 WORKSPACE_PATH = "/runpod-volume"
