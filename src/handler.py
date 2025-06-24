@@ -666,7 +666,7 @@ def extract_output_files(job_id, outputs): # <-- Acepta job_id
                 print(f"🚀 Subiendo {src.name} al bucket con el job_id: {job_id}")
                 
                 # --- Usando la llamada a la función 100% correcta ---
-                video_url = upload_video_hybrid(src, job_id)
+                video_url = upload_video_hybrid_complete(src, job_id)
                 # ----------------------------------------------------
                 
                 print(f"✅ Video subido exitosamente. URL: {video_url}")
