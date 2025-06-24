@@ -188,12 +188,12 @@ def test_runpod_getobject_access(bucket_name: str, object_key: str) -> dict:
 
 def upload_video_hybrid_complete(src: Path, job_id: str) -> str:
     """
-    Función completa que prueba todos los métodos disponibles
+    VERSIÓN MÁS SEGURA: Upload + GetObject + guardar público
     """
-    import boto3, os, requests
+    import boto3, os
     from datetime import datetime
     
-    print(f"🚀 Upload completo con todas las opciones...")
+    print(f"🚀 Método más seguro: Upload + GetObject...")
     
     s3_client = boto3.client(
         "s3",
@@ -208,43 +208,51 @@ def upload_video_hybrid_complete(src: Path, job_id: str) -> str:
     object_key = f"videos/{job_id}/{timestamp}_{src.name}"
     
     try:
-        # 1. Upload
+        # 1. Upload básico
         print(f"📤 Subiendo archivo...")
         s3_client.upload_file(str(src), bucket_name, object_key)
         print(f"✅ Upload exitoso: {object_key}")
         
-        # 2. Probar todos los métodos de acceso
-        print(f"🧪 Probando métodos de acceso...")
-        test_results = test_runpod_getobject_access(bucket_name, object_key)
+        # 2. GetObject - descargar inmediatamente
+        print(f"📥 Descargando con GetObject...")
+        response = s3_client.get_object(Bucket=bucket_name, Key=object_key)
+        video_data = response['Body'].read()
         
-        # 3. Imprimir resultados
-        print(f"📊 Resultados de pruebas:")
-        for method, result in test_results.items():
-            print(f"  {method}: {result}")
+        print(f"✅ GetObject exitoso: {len(video_data) / 1_048_576:.2f} MB descargados")
         
-        # 4. Retornar la mejor opción disponible
-        if "presigned_url" in test_results and test_results.get("presigned_url_test", "").startswith("✅"):
-            print(f"🎯 Usando URL presignada")
-            return test_results["presigned_url"]
+        # 3. Guardar en directorio de outputs
+        output_dir = Path("/runpod-volume/outputs")
+        output_dir.mkdir(exist_ok=True, parents=True)
         
-        elif "direct_url" in test_results and "200" in test_results.get("direct_url_test", ""):
-            print(f"🎯 Usando URL directa")
-            return test_results["direct_url"]
+        final_filename = f"video_{job_id}_{timestamp}_{src.name}"
+        output_file = output_dir / final_filename
         
-        else:
-            print(f"⚠️ Métodos automáticos fallaron, retornando info del objeto")
-            return {
-                "status": "uploaded_but_no_direct_access",
-                "bucket": bucket_name,
-                "key": object_key,
-                "endpoint": "https://s3api-eu-ro-1.runpod.io",
-                "download_command": f"aws s3api get-object --bucket {bucket_name} --key {object_key} --endpoint-url https://s3api-eu-ro-1.runpod.io downloaded_video.mp4",
-                "test_results": test_results
-            }
+        with open(output_file, 'wb') as f:
+            f.write(video_data)
+        
+        print(f"✅ Video guardado exitosamente: {output_file}")
+        
+        # 4. Retornar ruta accesible
+        return f"/outputs/{final_filename}"
         
     except Exception as e:
-        print(f"❌ Error en upload: {e}")
-        raise Exception(f"Upload failed: {e}")
+        print(f"❌ Error en método seguro: {e}")
+        
+        # Fallback súper simple: copiar el archivo original
+        try:
+            import shutil
+            output_dir = Path("/runpod-volume/outputs")
+            output_dir.mkdir(exist_ok=True, parents=True)
+            
+            fallback_file = output_dir / f"fallback_{job_id}_{src.name}"
+            shutil.copy2(src, fallback_file)
+            
+            print(f"🔄 Fallback: archivo copiado a {fallback_file}")
+            return f"/outputs/{fallback_file.name}"
+            
+        except Exception as e2:
+            print(f"❌ Fallback también falló: {e2}")
+            raise Exception(f"Todos los métodos fallaron: {e}")
 
 def debug_rp_upload_detailed():
     """Debug detallado de rp_upload"""
