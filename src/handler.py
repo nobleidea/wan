@@ -43,240 +43,26 @@ RP_OUTPUT_DIR.mkdir(exist_ok=True, parents=True)
 
 TARGET_NODE = "94"          # manténlo como string. Nodo del que sacamos el vídeo en extract_outpu...
 
-def upload_video_hybrid(src: Path, job_id: str) -> str:
-    """
-    Sube el vídeo `src` al bucket definido en las variables de entorno y
-    devuelve una URL lista para que el usuario la descargue.
-
-    Requisitos de entorno (todos ya existen; solo comprueba el ENDPOINT):
-        BUCKET_ACCESS_KEY_ID
-        BUCKET_SECRET_ACCESS_KEY
-        BUCKET_NAME
-        BUCKET_ENDPOINT_URL = https://<BUCKET_NAME>.s3api-eu-ro-1.runpod.io
-                              # ← incluye SIEMPRE el nombre del bucket
-                              #    tal y como aconseja la guía de RunPod.
-    """
-    
-    
-    date_prefix = datetime.utcnow().strftime("%m-%d")      # «06-25», etc.
-    from botocore.config import Config
-
-    # 1️⃣  Subida sencilla con el helper oficial.
-    upload_url = rp_upload.upload_file_to_bucket(
-+        file_name     = src.name,
-+        file_location = str(src),
-+        bucket_name   = BUCKET_NAME,    # ← SIEMPRE tu volumen: z41252jtk8
-+        prefix        = date_prefix,    # carpeta dentro del bucket
-+        extra_args    = {
-+            "ContentType": "video/mp4",
-+            "ACL": "public-read"        # quítalo si mantienes el bucket privado
-+        }
-+    )
-
-    # Si el helper ya devuelve una URL pública, la devolvemos tal cual.
-    if isinstance(upload_url, str) and upload_url.startswith("http"):
-        return upload_url
-
-    # 2️⃣  Caso bucket privado → generamos URL presignada de 24 h.
-    s3_client = boto3.client(
-        "s3",
-        region_name=os.getenv("AWS_REGION", "EU-RO-1"),
-        endpoint_url=os.environ["BUCKET_ENDPOINT_URL"],
-        aws_access_key_id=os.environ["BUCKET_ACCESS_KEY_ID"],
-        aws_secret_access_key=os.environ["BUCKET_SECRET_ACCESS_KEY"],
-        config=Config(signature_version="s3v4")
-    )
-
-    key = f"{date_prefix}/{src.name}"                      # misma carpeta
-    presigned_url = s3_client.generate_presigned_url(
-        "get_object",
-        Params={"Bucket": BUCKET_NAME, "Key": key},
-        ExpiresIn=int(timedelta(days=1).total_seconds())   # 24 h
-    )
-    return presigned_url
-    
-def upload_video_hybridold(src: Path, job_id: str) -> str:
-    """Función corregida usando las funciones correctas para serverless"""
-    
-    print(f"🚀 Subiendo {src.name} ({src.stat().st_size / 1_048_576:.2f} MB)")
-    
-    # MÉTODO 1: upload_image (solo 2 parámetros)
-    print("🔄 Intentando rp_upload.upload_image...")
-    try:
-        upload_result = rp_upload.upload_image(job_id, str(src))
-        
-        print(f"🔍 upload_image resultado: {upload_result}")
-        print(f"🔍 Tipo: {type(upload_result)}")
-        
-        if upload_result:
-            if isinstance(upload_result, str) and upload_result.startswith('http'):
-                print(f"✅ upload_image exitoso: {upload_result}")
-                return upload_result
-            else:
-                # Puede devolver solo el nombre del archivo o path relativo
-                result_str = str(upload_result)
-                print(f"🔍 upload_image devolvió string: {result_str}")
-                
-                # Si contiene una URL, extraerla
-                if 'http' in result_str:
-                    print(f"✅ URL encontrada en resultado: {result_str}")
-                    return result_str
-                else:
-                    print(f"⚠️ upload_image devolvió: {result_str}")
-        
-    except Exception as e:
-        print(f"❌ upload_image falló: {e}")
-        import traceback
-        print(f"❌ Traceback: {traceback.format_exc()}")
-    
-    # MÉTODO 2: upload_in_memory_object 
-    print("🔄 Intentando upload_in_memory_object...")
-    try:
-        with open(src, 'rb') as f:
-            file_data = f.read()
-        
-        # Según los logs anteriores, esta función existe
-        upload_result = rp_upload.upload_in_memory_object(
-            job_id,
-            file_data,
-            src.name
-        )
-        
-        print(f"🔍 upload_in_memory_object resultado: {upload_result}")
-        
-        if upload_result and isinstance(upload_result, str) and upload_result.startswith('http'):
-            print(f"✅ upload_in_memory_object exitoso: {upload_result}")
-            return upload_result
-            
-    except Exception as e:
-        print(f"❌ upload_in_memory_object falló: {e}")
-    
-    # MÉTODO 3: Fallback local
-    print("🔄 Fallback: archivo local...")
-    try:
-        output_dir = Path("/runpod-volume/outputs")
-        output_dir.mkdir(exist_ok=True, parents=True)
-        
-        timestamp = int(time.time())
-        output_file = output_dir / f"video_{job_id}_{timestamp}_{src.name}"
-        shutil.copy2(src, output_file)
-        
-        if output_file.exists():
-            print(f"📁 Video copiado exitosamente: {output_file}")
-            return f"/outputs/{output_file.name}"
-    
-    except Exception as e:
-        print(f"❌ Fallback falló: {e}")
-    
-    return str(src)
-
-def debug_rp_upload_detailed():
-    """Debug detallado de rp_upload"""
-    try:
-        print("🔍 === DEBUGGING rp_upload ===")
-        
-        # Mostrar funciones disponibles
-        functions = [attr for attr in dir(rp_upload) if not attr.startswith('_')]
-        print(f"Funciones disponibles: {functions}")
-        
-        # Inspeccionar upload_file_to_bucket
-        if hasattr(rp_upload, 'upload_file_to_bucket'):
-            import inspect
-            sig = inspect.signature(rp_upload.upload_file_to_bucket)
-            print(f"upload_file_to_bucket signature: {sig}")
-        
-        # Inspeccionar bucket_upload
-        if hasattr(rp_upload, 'bucket_upload'):
-            import inspect
-            sig = inspect.signature(rp_upload.bucket_upload)
-            print(f"bucket_upload signature: {sig}")
-            
-        print("🔍 === END DEBUG ===")
-        
-    except Exception as e:
-        print(f"❌ Error en debug: {e}")
-
-
-
-def upload_video_boto3_fixed(src: Path, job_id: str) -> str:
-    """boto3 con configuración corregida como función separada"""
-    from botocore.config import Config
-    
-    config = Config(signature_version='s3v4')
-    s3_client = boto3.client(
-        's3',
-        region_name=REGION,
-        endpoint_url=ENDPOINT_URL,
-        aws_access_key_id=os.environ["BUCKET_ACCESS_KEY_ID"],
-        aws_secret_access_key=os.environ["BUCKET_SECRET_ACCESS_KEY"],
-        config=config
-    )
-    
-    key = f"{job_id}/{src.name}"
-    
-    with open(src, "rb") as fh:
-        s3_client.put_object(
-            Bucket=BUCKET_NAME,
-            Key=key,
-            Body=fh,
-            ContentType="video/mp4"
-        )
-    
-    return s3_client.generate_presigned_url(
-        'get_object',
-        Params={'Bucket': BUCKET_NAME, 'Key': key},
-        ExpiresIn=int(timedelta(days=7).total_seconds())
-    )
-
 
 def upload_video(src: Path, job_id: str) -> str:
-    from botocore.config import Config
-    
-    # Configuración específica para RunPod S3
-    config = Config(
-        signature_version='s3v4',
-        region_name=REGION,
-        retries={'max_attempts': 4, 'mode': 'adaptive'}
-    )
-    
-    # Recrear el cliente S3 con la configuración correcta
-    s3_client = boto3.client(
-        "s3",
-        region_name=REGION,
-        endpoint_url=ENDPOINT_URL,
-        aws_access_key_id=os.environ["BUCKET_ACCESS_KEY_ID"],
-        aws_secret_access_key=os.environ["BUCKET_SECRET_ACCESS_KEY"],
-        config=config  # ← Esta es la clave
-    )
-    
-    key = f"{job_id}/{src.name}"
-    
-    # 1. Subida del archivo
+    key = f"{job_id}/{src.name}"          # carpeta = job_id
+
+    # 1. Subida en una sola pieza (PUT)
     with open(src, "rb") as fh:
-        s3_client.put_object(
-            Bucket=BUCKET_NAME,
-            Key=key,
-            Body=fh,
-            ContentType="video/mp4"
+        s3.put_object(
+            Bucket      = BUCKET_NAME,
+            Key         = key,
+            Body        = fh,
+            ContentType = "video/mp4"
         )
-    
-    # 2. Generar URL presignada con la configuración correcta
-    try:
-        presigned_url = s3_client.generate_presigned_url(
-            'get_object',
-            Params={
-                'Bucket': BUCKET_NAME,
-                'Key': key
-            },
-            ExpiresIn=int(timedelta(days=7).total_seconds())
-        )
-        
-        print(f"✅ URL presignada generada: {presigned_url}")
-        return presigned_url
-        
-    except Exception as e:
-        print(f"❌ Error generando URL presignada: {e}")
-        raise Exception(f"Failed to generate presigned URL: {e}")
+
+    # 2. URL presignada (7 días)
+    return s3.generate_presigned_url(
+        "get_object",
+        Params     = {"Bucket": BUCKET_NAME, "Key": key},
+        ExpiresIn  = int(timedelta(days=7).total_seconds())
+    )
+
 
 def save_base64_image(base64_string, filename):
     """Guardar imagen base64 en el sistema de archivos con procesamiento PIL"""
@@ -566,9 +352,6 @@ def execute_workflow(job_id, workflow):
 
 def extract_output_files(job_id, outputs): # <-- Acepta job_id
     """Usar rp_upload para obtener URLs descargables y devolver la URL del video."""
-    # Debug de rp_upload al inicio
-    debug_rp_upload_detailed()
-    
     for node_id, node_output in outputs.items():
         if str(node_id) != TARGET_NODE:  # TARGET_NODE es '94'
             continue
@@ -590,7 +373,7 @@ def extract_output_files(job_id, outputs): # <-- Acepta job_id
                 print(f"🚀 Subiendo {src.name} al bucket con el job_id: {job_id}")
                 
                 # --- Usando la llamada a la función 100% correcta ---
-                video_url = upload_video_hybrid(src, job_id)
+                video_url = upload_video(src, job_id)
                 # ----------------------------------------------------
                 
                 print(f"✅ Video subido exitosamente. URL: {video_url}")
