@@ -56,20 +56,22 @@ def upload_video_hybrid(src: Path, job_id: str) -> str:
                               # ← incluye SIEMPRE el nombre del bucket
                               #    tal y como aconseja la guía de RunPod.
     """
-    from runpod.serverless.utils import rp_upload
-    import boto3, os
-    from datetime import timedelta
+    
+    
+    date_prefix = datetime.utcnow().strftime("%m-%d")      # «06-25», etc.
     from botocore.config import Config
 
     # 1️⃣  Subida sencilla con el helper oficial.
     upload_url = rp_upload.upload_file_to_bucket(
-        file_name=src.name,
-        file_location=str(src),
-        extra_args={               # mimetype correcto y ACL opcional
-            "ContentType": "video/mp4",
-            "ACL": "public-read"   # quítalo si tu bucket es privado
-        }
-    )
++        file_name     = src.name,
++        file_location = str(src),
++        bucket_name   = BUCKET_NAME,    # ← SIEMPRE tu volumen: z41252jtk8
++        prefix        = date_prefix,    # carpeta dentro del bucket
++        extra_args    = {
++            "ContentType": "video/mp4",
++            "ACL": "public-read"        # quítalo si mantienes el bucket privado
++        }
++    )
 
     # Si el helper ya devuelve una URL pública, la devolvemos tal cual.
     if isinstance(upload_url, str) and upload_url.startswith("http"):
@@ -85,9 +87,10 @@ def upload_video_hybrid(src: Path, job_id: str) -> str:
         config=Config(signature_version="s3v4")
     )
 
+    key = f"{date_prefix}/{src.name}"                      # misma carpeta
     presigned_url = s3_client.generate_presigned_url(
         "get_object",
-        Params={"Bucket": os.environ["BUCKET_NAME"], "Key": src.name},
+        Params={"Bucket": BUCKET_NAME, "Key": key},
         ExpiresIn=int(timedelta(days=1).total_seconds())   # 24 h
     )
     return presigned_url
