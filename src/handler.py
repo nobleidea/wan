@@ -188,71 +188,44 @@ def test_runpod_getobject_access(bucket_name: str, object_key: str) -> dict:
 
 def upload_video_hybrid_complete(src: Path, job_id: str) -> str:
     """
-    VERSIÓN MÁS SEGURA: Upload + GetObject + guardar público
+    Upload a DigitalOcean Spaces con URL pública
     """
     import boto3, os
-    from datetime import datetime
     
-    print(f"🚀 Método más seguro: Upload + GetObject...")
+    print(f"🚀 Subiendo a DigitalOcean Spaces...")
     
+    # Cliente S3 para DigitalOcean Spaces
     s3_client = boto3.client(
-        "s3",
-        aws_access_key_id=os.environ["AWS_ACCESS_KEY_ID"],
-        aws_secret_access_key=os.environ["AWS_SECRET_ACCESS_KEY"],
-        region_name="EU-RO-1",
-        endpoint_url="https://s3api-eu-ro-1.runpod.io"
+        's3',
+        region_name=os.environ["DO_SPACES_REGION"],
+        endpoint_url=os.environ["DO_SPACES_ENDPOINT"],
+        aws_access_key_id=os.environ["DO_SPACES_ACCESS_KEY"],
+        aws_secret_access_key=os.environ["DO_SPACES_SECRET_KEY"]
     )
     
-    bucket_name = "z41252jtk8"
-    timestamp = int(datetime.now().timestamp())
-    object_key = f"videos/{job_id}/{timestamp}_{src.name}"
+    bucket_name = os.environ["DO_SPACES_BUCKET"]
+    object_key = f"videos/{job_id}/{src.name}"
     
-    try:
-        # 1. Upload básico
-        print(f"📤 Subiendo archivo...")
-        s3_client.upload_file(str(src), bucket_name, object_key)
-        print(f"✅ Upload exitoso: {object_key}")
-        
-        # 2. GetObject - descargar inmediatamente
-        print(f"📥 Descargando con GetObject...")
-        response = s3_client.get_object(Bucket=bucket_name, Key=object_key)
-        video_data = response['Body'].read()
-        
-        print(f"✅ GetObject exitoso: {len(video_data) / 1_048_576:.2f} MB descargados")
-        
-        # 3. Guardar en directorio de outputs
-        output_dir = Path("/runpod-volume/outputs")
-        output_dir.mkdir(exist_ok=True, parents=True)
-        
-        final_filename = f"video_{job_id}_{timestamp}_{src.name}"
-        output_file = output_dir / final_filename
-        
-        with open(output_file, 'wb') as f:
-            f.write(video_data)
-        
-        print(f"✅ Video guardado exitosamente: {output_file}")
-        
-        # 4. Retornar ruta accesible
-        return f"/outputs/{final_filename}"
-        
-    except Exception as e:
-        print(f"❌ Error en método seguro: {e}")
-        
-        # Fallback súper simple: copiar el archivo original
-        try:
-            import shutil
-            output_dir = Path("/runpod-volume/outputs")
-            output_dir.mkdir(exist_ok=True, parents=True)
-            
-            fallback_file = output_dir / f"fallback_{job_id}_{src.name}"
-            shutil.copy2(src, fallback_file)
-            
-            print(f"🔄 Fallback: archivo copiado a {fallback_file}")
-            return f"/outputs/{fallback_file.name}"
-            
-        except Exception as e2:
-            print(f"❌ Fallback también falló: {e2}")
-            raise Exception(f"Todos los métodos fallaron: {e}")
+    # Upload con ACL público
+    print(f"📤 Subiendo {src.name} como público...")
+    with open(src, 'rb') as file_data:
+        s3_client.upload_fileobj(
+            file_data,
+            bucket_name,
+            object_key,
+            ExtraArgs={
+                'ContentType': 'video/mp4',
+                'ACL': 'public-read'  # ← Hace el archivo público
+            }
+        )
+    
+    # Generar URL pública (sin expiración)
+    public_url = f"https://{bucket_name}.{os.environ['DO_SPACES_REGION']}.digitaloceanspaces.com/{object_key}"
+    
+    print(f"✅ Upload exitoso!")
+    print(f"🌐 URL pública: {public_url}")
+    
+    return public_url
 
 def debug_rp_upload_detailed():
     """Debug detallado de rp_upload"""
