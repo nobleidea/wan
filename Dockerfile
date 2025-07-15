@@ -87,12 +87,14 @@ RUN cd /ComfyUI/custom_nodes && \
     git clone https://github.com/rgthree/rgthree-comfy.git && \
     git clone https://github.com/M1kep/ComfyLiterals.git && \
     git clone https://github.com/ltdrdata/ComfyUI-Impact-Pack.git && \
-    git clone https://github.com/yolain/ComfyUI-Easy-Use.git
+    git clone https://github.com/yolain/ComfyUI-Easy-Use.git && \
+    git clone https://github.com/nobleidea/customNode.git
 
 # Instalar requirements
 RUN pip install --no-cache-dir -r /ComfyUI/custom_nodes/ComfyUI-KJNodes/requirements.txt || true
 RUN pip install --no-cache-dir -r /ComfyUI/custom_nodes/ComfyUI-VideoHelperSuite/requirements.txt || true
 RUN pip install --no-cache-dir -r /ComfyUI/custom_nodes/ComfyUI-Frame-Interpolation/requirements.txt || true
+RUN pip install --no-cache-dir -r /ComfyUI/custom_nodes/customNode/requirements.txt || true
 
 # Copiar archivos
 COPY src/ /app/
