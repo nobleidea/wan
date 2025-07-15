@@ -12,15 +12,15 @@ from PIL import Image
 import io
 import boto3
 
-# Configuración
+# 설정
 WORKSPACE_PATH = "/runpod-volume"
 COMFYUI_PATH = f"{WORKSPACE_PATH}/ComfyUI"
 WORKFLOW_PATH = "/app/workflow.json"
 COMFYUI_URL = "http://localhost:8188"
-TARGET_NODE = "94"  # Nodo del video final
+TARGET_NODE = "94"  # 최종 비디오 노드
 
 def upload_video_to_digitalocean(src: Path, job_id: str) -> str:
-    """Upload a DigitalOcean Spaces con URL pública"""
+    """공개 URL로 DigitalOcean Spaces에 업로드"""
     print(f"🚀 Subiendo a DigitalOcean Spaces...")
     
     s3_client = boto3.client(
@@ -34,7 +34,7 @@ def upload_video_to_digitalocean(src: Path, job_id: str) -> str:
     bucket_name = os.environ["DO_SPACES_BUCKET"]
     object_key = f"videos/{job_id}/{src.name}"
     
-    # Upload con ACL público
+    # 공개 ACL로 업로드
     print(f"📤 Subiendo {src.name} como público...")
     with open(src, 'rb') as file_data:
         s3_client.upload_fileobj(
@@ -47,7 +47,7 @@ def upload_video_to_digitalocean(src: Path, job_id: str) -> str:
             }
         )
     
-    # Generar URL pública
+    # 공개 URL 생성
     public_url = f"https://{bucket_name}.{os.environ['DO_SPACES_REGION']}.digitaloceanspaces.com/{object_key}"
     
     print(f"✅ Upload exitoso!")
@@ -56,22 +56,22 @@ def upload_video_to_digitalocean(src: Path, job_id: str) -> str:
     return public_url
 
 def save_base64_image(base64_string, filename):
-    """Guardar imagen base64 en el sistema de archivos"""
+    """base64 이미지를 파일 시스템에 저장"""
     try:
-        # Remover prefijo data:image si existe
+        # data:image 접두사가 있으면 제거
         if ',' in base64_string:
             base64_string = base64_string.split(',')[1]
 
-        # Añadir padding si es necesario
+        # 필요한 경우 패딩 추가
         missing_padding = len(base64_string) % 4
         if missing_padding:
             base64_string += '=' * (4 - missing_padding)
 
-        # Decodificar base64
+        # base64 디코딩
         image_data = base64.b64decode(base64_string)
         image = Image.open(io.BytesIO(image_data))
         
-        # Manejar diferentes modos de color
+        # 다양한 색상 모드 처리
         if image.mode == 'RGBA':
             background = Image.new('RGB', image.size, (255, 255, 255))
             background.paste(image, mask=image.split()[3])
@@ -81,7 +81,7 @@ def save_base64_image(base64_string, filename):
         elif image.mode not in ('RGB', 'L'):
             image = image.convert('RGB')
         
-        # Guardar imagen
+        # 이미지 저장
         input_dir = f"{COMFYUI_PATH}/input"
         os.makedirs(input_dir, exist_ok=True)
         
@@ -96,7 +96,7 @@ def save_base64_image(base64_string, filename):
         raise Exception(f"Failed to save input image: {e}")
 
 def download_image_from_url(image_url):
-    """Descargar imagen desde URL"""
+    """URL에서 이미지 다운로드"""
     try:
         print(f"📥 Downloading image from: {image_url}")
         
@@ -105,7 +105,7 @@ def download_image_from_url(image_url):
         
         image = Image.open(io.BytesIO(response.content))
         
-        # Manejar diferentes modos de color
+        # 다양한 색상 모드 처리
         if image.mode == 'RGBA':
             background = Image.new('RGB', image.size, (255, 255, 255))
             background.paste(image, mask=image.split()[3])
@@ -115,7 +115,7 @@ def download_image_from_url(image_url):
         elif image.mode not in ('RGB', 'L'):
             image = image.convert('RGB')
         
-        # Guardar
+        # 저장
         input_dir = f"{COMFYUI_PATH}/input"
         os.makedirs(input_dir, exist_ok=True)
         
@@ -133,7 +133,7 @@ def download_image_from_url(image_url):
         raise Exception(f"Failed to download image: {e}")
 
 def process_image_input(image_input):
-    """Procesar imagen desde cualquier formato"""
+    """모든 형식의 이미지 처리"""
     try:
         if isinstance(image_input, str):
             if image_input.startswith(("http://", "https://")):
@@ -154,14 +154,14 @@ def process_image_input(image_input):
         raise Exception(f"Failed to process image: {e}")
 
 def modify_workflow(workflow: dict, image_filename: str, prompt: str, negative_prompt: str, width: int = 832, height: int = 480) -> dict:
-    """Modifica el workflow con los parámetros del usuario"""
-    # Generar seed único
+    """사용자 매개변수로 워크플로우 수정"""
+    # 고유한 시드 생성
     unique_seed = int(time.time() * 1000000) % 2147483647
     print(f"🎲 Generated unique seed: {unique_seed}")
     
     modified_workflow = workflow.copy()
     
-    # Actualizar nodos del workflow
+    # 워크플로우 노드 업데이트
     if "294" in modified_workflow and "inputs" in modified_workflow["294"]:
         modified_workflow["294"]["inputs"]["image"] = image_filename
         print(f"✅ Updated LoadImage with: {image_filename}")
@@ -186,7 +186,7 @@ def modify_workflow(workflow: dict, image_filename: str, prompt: str, negative_p
     return modified_workflow
 
 def execute_workflow(job_id, workflow):
-    """Ejecutar workflow en ComfyUI y esperar resultado"""
+    """ComfyUI에서 워크플로우 실행 및 결과 대기"""
     try:
         prompt_id = str(uuid.uuid4())
         
@@ -204,9 +204,9 @@ def execute_workflow(job_id, workflow):
         prompt_id = result["prompt_id"]
         print(f"✅ Workflow submitted, prompt_id: {prompt_id}")
         
-        # Esperar resultado
+        # 결과 대기
         print("⏳ Waiting for workflow execution...")
-        max_wait = 900  # 15 minutos
+        max_wait = 900  # 15분
         start_time = time.time()
         
         while time.time() - start_time < max_wait:
@@ -230,7 +230,7 @@ def execute_workflow(job_id, workflow):
             
             time.sleep(5)
             
-            # Log de progreso cada 30 segundos
+            # 30초마다 진행 상황 로그
             if int(time.time() - start_time) % 30 == 0:
                 elapsed = int(time.time() - start_time)
                 print(f"⏳ Still waiting... ({elapsed}s elapsed)")
@@ -242,12 +242,12 @@ def execute_workflow(job_id, workflow):
         raise Exception(f"Failed to execute workflow: {e}")
 
 def extract_output_files(job_id, outputs):
-    """Extraer archivos de salida y subirlos a DigitalOcean"""
+    """출력 파일 추출 및 DigitalOcean에 업로드"""
     for node_id, node_output in outputs.items():
         if str(node_id) != TARGET_NODE:
             continue
 
-        # Buscar video en outputs
+        # 출력에서 비디오 검색
         for key in ("videos", "gifs"):
             if key not in node_output:
                 continue
@@ -278,21 +278,21 @@ def extract_output_files(job_id, outputs):
     raise RuntimeError(f"No video output found in node {TARGET_NODE}")
 
 def generate_video(job_id, input_image, prompt, negative_prompt="", width=832, height=480):
-    """Generar video usando el workflow completo"""
+    """전체 워크플로우를 사용한 비디오 생성"""
     try:
         print("🎬 Starting video generation...")
         
-        # 1. Procesar imagen de entrada
+        # 1. 입력 이미지 처리
         saved_filename = process_image_input(input_image)
         
-        # 2. Cargar y modificar workflow
+        # 2. 워크플로우 로드 및 수정
         print("📝 Loading and modifying workflow...")
         with open(WORKFLOW_PATH, 'r') as f:
             workflow = json.load(f)
         
         modified_workflow = modify_workflow(workflow, saved_filename, prompt, negative_prompt, width, height)
         
-        # 3. Ejecutar workflow
+        # 3. 워크플로우 실행
         output_data = execute_workflow(job_id, modified_workflow)
         
         if not output_data or "url" not in output_data:
@@ -313,7 +313,7 @@ def generate_video(job_id, input_image, prompt, negative_prompt="", width=832, h
         }
 
 def check_models():
-    """Verificar que los modelos estén disponibles"""
+    """모델 가용성 확인"""
     required_models = {
         "diffusion_models": ["wan2.1_i2v_480p_14B_bf16.safetensors"],
         "text_encoders": ["umt5_xxl_fp8_e4m3fn_scaled.safetensors"],
@@ -336,8 +336,8 @@ def check_models():
     return True
 
 def start_comfyui():
-    """Iniciar ComfyUI server"""
-    # Verificar si ComfyUI ya está ejecutándose
+    """ComfyUI 서버 시작"""
+    # ComfyUI가 이미 실행 중인지 확인
     try:
         response = requests.get(f"{COMFYUI_URL}/history", timeout=5)
         if response.status_code == 200:
@@ -346,7 +346,7 @@ def start_comfyui():
     except Exception:
         print("🔧 Starting ComfyUI...")
         
-    # Crear symlink si no existe
+    # 심볼릭 링크가 없으면 생성
     symlink_path = "/ComfyUI"
     if not (os.path.exists(symlink_path) or os.path.islink(symlink_path)):
         os.symlink(COMFYUI_PATH, symlink_path)
@@ -357,7 +357,7 @@ def start_comfyui():
     if not os.path.exists("main.py"):
         raise Exception(f"main.py not found in {COMFYUI_PATH}")
     
-    # Iniciar ComfyUI
+    # ComfyUI 시작
     cmd = ["python", "main.py", "--listen", "0.0.0.0", "--port", "8188"]
     
     process = subprocess.Popen(
@@ -368,7 +368,7 @@ def start_comfyui():
         bufsize=1
     )
     
-    # Mostrar logs en tiempo real
+    # 실시간 로그 표시
     def show_logs():
         for line in process.stdout:
             print(f"ComfyUI: {line.strip()}")
@@ -376,9 +376,9 @@ def start_comfyui():
     thread = threading.Thread(target=show_logs, daemon=True)
     thread.start()
     
-    # Esperar a que ComfyUI esté listo
+    # ComfyUI 준비 대기
     print("⏳ Waiting for ComfyUI to be ready...")
-    for i in range(300):  # 5 minutos
+    for i in range(300):  # 5분
         try:
             response = requests.get(f"{COMFYUI_URL}/history", timeout=5)
             if response.status_code == 200:
@@ -392,26 +392,26 @@ def start_comfyui():
     raise Exception("ComfyUI failed to start within 5 minutes")
 
 def handler(event):
-    """Handler principal de RunPod"""
+    """RunPod 메인 핸들러"""
     try:
         print("🚀 Starting WAN 2.1 I2V serverless handler...")
         
-        # Verificar modelos
+        # 모델 확인
         print("🔍 Checking models...")
         check_models()
         
-        # Iniciar ComfyUI
+        # ComfyUI 시작
         print("⚡ Starting ComfyUI...")
         start_comfyui()
         
-        # Obtener inputs
+        # 입력 값 가져오기
         job_input = event.get("input", {})
         job_id = event.get("id")
         
         if not job_input:
             return {"message": "No input provided"}
         
-        # Generar video
+        # 비디오 생성
         result = generate_video(
             job_id,
             job_input.get("image", ""),
