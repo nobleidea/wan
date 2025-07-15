@@ -13,8 +13,7 @@ import io
 import boto3
 
 # 설정
-WORKSPACE_PATH = "/runpod-volume"
-COMFYUI_PATH = f"{WORKSPACE_PATH}/ComfyUI"
+COMFYUI_PATH = "/comfyui"
 WORKFLOW_PATH = "/app/workflow.json"
 COMFYUI_URL = "http://localhost:8188"
 TARGET_NODE = "94"  # 최종 비디오 노드
@@ -346,12 +345,6 @@ def start_comfyui():
     except Exception:
         print("🔧 Starting ComfyUI...")
         
-    # 심볼릭 링크가 없으면 생성
-    symlink_path = "/ComfyUI"
-    if not (os.path.exists(symlink_path) or os.path.islink(symlink_path)):
-        os.symlink(COMFYUI_PATH, symlink_path)
-        print(f"🔗 Symlink created: {symlink_path} → {COMFYUI_PATH}")
-    
     os.chdir(COMFYUI_PATH)
     
     if not os.path.exists("main.py"):
@@ -384,7 +377,7 @@ def start_comfyui():
             if response.status_code == 200:
                 print("✅ ComfyUI is ready!")
                 return True
-        except Exception as e:
+        except Exception:
             if i % 30 == 0:
                 print(f"⏳ Still waiting... ({i//60}m {i%60}s)")
         time.sleep(1)

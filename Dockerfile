@@ -1,102 +1,108 @@
-# Updated handler path - rebuild trigger
-# Dockerfile optimizado para WAN 2.1 I2V Serverless
-FROM nvidia/cuda:12.8.1-cudnn-devel-ubuntu24.04 AS base
+# WAN 2.1 I2V Serverless - Direct Installation
+FROM runpod/worker-comfyui:5.2.0-base
 
-ENV DEBIAN_FRONTEND=noninteractive \
-    PIP_PREFER_BINARY=1 \
-    PYTHONUNBUFFERED=1 \
-    PYTHONDONTWRITEBYTECODE=1 \
-    PATH="/opt/venv/bin:$PATH"
-    
+RUN apt-get update && apt-get install -y git wget zlib1g-dev && rm -rf /var/lib/apt/lists/*
 
+# Create all necessary model directories
+RUN mkdir -p \
+    /comfyui/models/diffusion_models \
+    /comfyui/models/vae \
+    /comfyui/models/text_encoders \
+    /comfyui/models/clip_vision \
+    /comfyui/models/upscale_models
 
-# Instalar dependencias del sistema en pasos separados
-RUN apt-get update
+# Download WAN 2.1 models
+RUN echo "=== Downloading WAN 2.1 models ===" && \
+    wget --timeout=600 --tries=3 --user-agent="Mozilla/5.0" -c \
+    -O "/comfyui/models/diffusion_models/wan2.1_i2v_480p_14B_bf16.safetensors" \
+    "https://huggingface.co/Comfy-Org/Wan_2.1_ComfyUI_repackaged/resolve/main/split_files/diffusion_models/wan2.1_i2v_480p_14B_bf16.safetensors"
 
-RUN apt-get install -y --no-install-recommends \
-    python3.12 python3.12-venv python3.12-dev python3-pip
+RUN wget --timeout=600 --tries=3 --user-agent="Mozilla/5.0" -c \
+    -O "/comfyui/models/text_encoders/umt5_xxl_fp8_e4m3fn_scaled.safetensors" \
+    "https://huggingface.co/Comfy-Org/Wan_2.1_ComfyUI_repackaged/resolve/main/split_files/text_encoders/umt5_xxl_fp8_e4m3fn_scaled.safetensors"
 
-RUN apt-get install -y --no-install-recommends \
-    curl git wget vim libgl1 libglib2.0-0 build-essential
+RUN wget --timeout=600 --tries=3 --user-agent="Mozilla/5.0" -c \
+    -O "/comfyui/models/vae/wan_2.1_vae.safetensors" \
+    "https://huggingface.co/Comfy-Org/Wan_2.1_ComfyUI_repackaged/resolve/main/split_files/vae/wan_2.1_vae.safetensors"
 
-RUN ln -sf /usr/bin/python3.12 /usr/bin/python && \
-    python3.12 -m venv /opt/venv && \
-    apt-get clean && rm -rf /var/lib/apt/lists/*
+RUN wget --timeout=600 --tries=3 --user-agent="Mozilla/5.0" -c \
+    -O "/comfyui/models/clip_vision/clip_vision_h.safetensors" \
+    "https://huggingface.co/Comfy-Org/Wan_2.1_ComfyUI_repackaged/resolve/main/split_files/clip_vision/clip_vision_h.safetensors"
 
-# Instalar PyTorch
-RUN pip install --no-cache-dir --pre torch torchvision torchaudio \
-        --index-url https://download.pytorch.org/whl/nightly/cu128
+RUN wget --timeout=600 --tries=3 --user-agent="Mozilla/5.0" -c \
+    -O "/comfyui/models/upscale_models/4xLSDIR.pth" \
+    "https://github.com/Phhofm/models/releases/download/4xLSDIR/4xLSDIR.pth"
 
-# Instalar dependencias base
-# Instalar dependencias base (quitamos opencv-python, ponemos la versión compatible)
-RUN pip install --no-cache-dir \
-    runpod>=1.7.12 \
-    websocket-client \
-    requests \
-    pillow \
-    timm==0.9.16 \
-    wget \
-    sageattention \
-    lark \
-    opencv-contrib-python==4.11.0.86            # incluye guidedFilter
+# Install custom nodes with conditional checking
+WORKDIR /comfyui/custom_nodes
 
-# 🔥 Instalar sageattention COMPLETO para RTX 5090
-#RUN pip install --no-cache-dir git+https://github.com/thu-ml/SageAttention.git
+RUN echo "=== Installing custom nodes ===" && \
+    if [ ! -d "ComfyUI-KJNodes" ]; then \
+        echo "Cloning ComfyUI-KJNodes..." && \
+        git clone https://github.com/kijai/ComfyUI-KJNodes.git && \
+        echo "ComfyUI-KJNodes cloned successfully"; \
+    fi && \
+    if [ ! -d "ComfyUI_essentials" ]; then \
+        echo "Cloning ComfyUI_essentials..." && \
+        git clone https://github.com/cubiq/ComfyUI_essentials.git && \
+        echo "ComfyUI_essentials cloned successfully"; \
+    fi && \
+    if [ ! -d "ComfyUI-VideoHelperSuite" ]; then \
+        echo "Cloning ComfyUI-VideoHelperSuite..." && \
+        git clone https://github.com/Kosinkadink/ComfyUI-VideoHelperSuite.git && \
+        echo "ComfyUI-VideoHelperSuite cloned successfully"; \
+    fi && \
+    if [ ! -d "ComfyUI-Frame-Interpolation" ]; then \
+        echo "Cloning ComfyUI-Frame-Interpolation..." && \
+        git clone https://github.com/Fannovel16/ComfyUI-Frame-Interpolation.git && \
+        echo "ComfyUI-Frame-Interpolation cloned successfully"; \
+    fi && \
+    if [ ! -d "cg-use-everywhere" ]; then \
+        echo "Cloning cg-use-everywhere..." && \
+        git clone https://github.com/chrisgoringe/cg-use-everywhere.git && \
+        echo "cg-use-everywhere cloned successfully"; \
+    fi && \
+    if [ ! -d "rgthree-comfy" ]; then \
+        echo "Cloning rgthree-comfy..." && \
+        git clone https://github.com/rgthree/rgthree-comfy.git && \
+        echo "rgthree-comfy cloned successfully"; \
+    fi && \
+    if [ ! -d "ComfyLiterals" ]; then \
+        echo "Cloning ComfyLiterals..." && \
+        git clone https://github.com/M1kep/ComfyLiterals.git && \
+        echo "ComfyLiterals cloned successfully"; \
+    fi && \
+    if [ ! -d "ComfyUI-Impact-Pack" ]; then \
+        echo "Cloning ComfyUI-Impact-Pack..." && \
+        git clone https://github.com/ltdrdata/ComfyUI-Impact-Pack.git && \
+        echo "ComfyUI-Impact-Pack cloned successfully"; \
+    fi && \
+    if [ ! -d "ComfyUI-Easy-Use" ]; then \
+        echo "Cloning ComfyUI-Easy-Use..." && \
+        git clone https://github.com/yolain/ComfyUI-Easy-Use.git && \
+        echo "ComfyUI-Easy-Use cloned successfully"; \
+    fi && \
+    if [ ! -d "customNode" ]; then \
+        echo "Cloning customNode..." && \
+        git clone https://github.com/nobleidea/customNode.git && \
+        echo "customNode cloned successfully"; \
+    fi
 
-# Instalar dependencias adicionales para WAN nodes con versiones compatibles
-RUN pip install --no-cache-dir \
-    accelerate \
-    scikit-image \
-    numba \
-    omegaconf \
-    blend-modes \
-    piexif \
-    ftfy \
-    einops \
-    sentencepiece \
-    fire \
-    "huggingface_hub>=0.20.0,<0.30.0" \
-    "diffusers>=0.30.0,<0.35.0" \
-    "transformers>=4.37.0,<4.45.0"
+# Install requirements for each node
+RUN echo "=== Installing dependencies ===" && \
+    for dir in ComfyUI-KJNodes ComfyUI_essentials ComfyUI-VideoHelperSuite ComfyUI-Frame-Interpolation cg-use-everywhere rgthree-comfy ComfyLiterals ComfyUI-Impact-Pack ComfyUI-Easy-Use customNode; do \
+        if [ -f "/comfyui/custom_nodes/$dir/requirements.txt" ]; then \
+            echo "Installing requirements for $dir"; \
+            cd "/comfyui/custom_nodes/$dir" && pip install -r requirements.txt || true; \
+        else \
+            echo "No requirements.txt found for $dir"; \
+        fi; \
+    done
 
-# ─── Impact-Pack deps: Segment-Anything + ONNX Runtime ───
-# Dependencias para Impact-Pack
-RUN pip install --no-cache-dir \
-    segment-anything==1.0.0        \
-    onnxruntime-gpu==1.18.0
+# Set final workdir and copy files
+WORKDIR /comfyui
 
-# Instalar ComfyUI
-RUN pip install --no-cache-dir comfy-cli && \
-    /usr/bin/yes | comfy --workspace /ComfyUI install
-
-# Instalar custom nodes uno por uno
-RUN cd /ComfyUI/custom_nodes && \
-    git clone https://github.com/kijai/ComfyUI-KJNodes.git
-
-RUN cd /ComfyUI/custom_nodes && \
-    git clone https://github.com/cubiq/ComfyUI_essentials.git
-
-RUN cd /ComfyUI/custom_nodes && \
-    git clone https://github.com/Kosinkadink/ComfyUI-VideoHelperSuite.git
-
-RUN cd /ComfyUI/custom_nodes && \
-    git clone https://github.com/Fannovel16/ComfyUI-Frame-Interpolation.git
-
-RUN cd /ComfyUI/custom_nodes && \
-    git clone https://github.com/chrisgoringe/cg-use-everywhere.git && \
-    git clone https://github.com/rgthree/rgthree-comfy.git && \
-    git clone https://github.com/M1kep/ComfyLiterals.git && \
-    git clone https://github.com/ltdrdata/ComfyUI-Impact-Pack.git && \
-    git clone https://github.com/yolain/ComfyUI-Easy-Use.git && \
-    git clone https://github.com/nobleidea/customNode.git
-
-# Instalar requirements
-RUN pip install --no-cache-dir -r /ComfyUI/custom_nodes/ComfyUI-KJNodes/requirements.txt || true
-RUN pip install --no-cache-dir -r /ComfyUI/custom_nodes/ComfyUI-VideoHelperSuite/requirements.txt || true
-RUN pip install --no-cache-dir -r /ComfyUI/custom_nodes/ComfyUI-Frame-Interpolation/requirements.txt || true
-RUN pip install --no-cache-dir -r /ComfyUI/custom_nodes/customNode/requirements.txt || true
-
-# Copiar archivos
+# Copy application files
 COPY src/ /app/
 COPY Legacy-Native-I2V-32FPS.json /app/workflow.json
 WORKDIR /app
