@@ -118,11 +118,16 @@ def process_image_input(image_input):
         print(f"❌ Error processing image: {e}")
         raise Exception(f"Failed to process image: {e}")
 
-def modify_workflow(workflow: dict, image_filename: str, prompt: str, negative_prompt: str, width: int = 832, height: int = 480) -> dict:
+def modify_workflow(workflow: dict, image_filename: str, prompt: str, negative_prompt: str, width: int = 832, height: int = 480, video_length: float = 4.0) -> dict:
     """사용자 매개변수로 워크플로우 수정"""
     # 고유한 시드 생성
     unique_seed = int(time.time() * 1000000) % 2147483647
     print(f"🎲 Generated unique seed: {unique_seed}")
+    
+    # 비디오 길이에 따른 프레임 수 계산
+    # 32 FPS 출력에 프레임 보간 2배를 고려하여 16 FPS 기준으로 계산
+    frame_count = int(video_length * 16)
+    print(f"📹 Video length: {video_length}s -> {frame_count} frames (before interpolation)")
     
     modified_workflow = workflow.copy()
     
@@ -146,7 +151,9 @@ def modify_workflow(workflow: dict, image_filename: str, prompt: str, negative_p
     if "236" in modified_workflow and "inputs" in modified_workflow["236"]:
         modified_workflow["236"]["inputs"]["width"] = width
         modified_workflow["236"]["inputs"]["height"] = height
+        modified_workflow["236"]["inputs"]["length"] = frame_count
         print(f"✅ Updated dimensions: {width}x{height}")
+        print(f"✅ Updated video length: {frame_count} frames")
     
     return modified_workflow
 
@@ -260,7 +267,7 @@ def extract_output_files(outputs):
 
     raise RuntimeError(f"No video output found in node {TARGET_NODE}")
 
-def generate_video(job_id, input_image, prompt, negative_prompt="", width=832, height=480):
+def generate_video(job_id, input_image, prompt, negative_prompt="", width=832, height=480, video_length=4.0):
     """전체 워크플로우를 사용한 비디오 생성"""
     try:
         print("🎬 Starting video generation...")
@@ -273,7 +280,7 @@ def generate_video(job_id, input_image, prompt, negative_prompt="", width=832, h
         with open(WORKFLOW_PATH, 'r') as f:
             workflow = json.load(f)
         
-        modified_workflow = modify_workflow(workflow, saved_filename, prompt, negative_prompt, width, height)
+        modified_workflow = modify_workflow(workflow, saved_filename, prompt, negative_prompt, width, height, video_length)
         
         # 3. 워크플로우 실행
         output_data = execute_workflow(modified_workflow)
@@ -395,7 +402,8 @@ def handler(event):
             job_input.get("prompt", ""),
             job_input.get("negative_prompt", ""),
             job_input.get("width", 832),
-            job_input.get("height", 480)
+            job_input.get("height", 480),
+            job_input.get("video_length", 4.0)
         )
         
         return result
