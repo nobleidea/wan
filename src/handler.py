@@ -10,7 +10,6 @@ import uuid
 from pathlib import Path
 from PIL import Image
 import io
-import boto3
 
 # 설정
 COMFYUI_PATH = "/comfyui"
@@ -18,41 +17,8 @@ WORKFLOW_PATH = "/app/workflow.json"
 COMFYUI_URL = "http://localhost:8188"
 TARGET_NODE = "94"  # 최종 비디오 노드
 
-def upload_video_to_digitalocean(src: Path, job_id: str) -> str:
-    """공개 URL로 DigitalOcean Spaces에 업로드"""
-    print(f"🚀 Subiendo a DigitalOcean Spaces...")
-    
-    s3_client = boto3.client(
-        's3',
-        region_name=os.environ["DO_SPACES_REGION"],
-        endpoint_url=os.environ["DO_SPACES_ENDPOINT"],
-        aws_access_key_id=os.environ["DO_SPACES_ACCESS_KEY"],
-        aws_secret_access_key=os.environ["DO_SPACES_SECRET_KEY"]
-    )
-    
-    bucket_name = os.environ["DO_SPACES_BUCKET"]
-    object_key = f"videos/{job_id}/{src.name}"
-    
-    # 공개 ACL로 업로드
-    print(f"📤 Subiendo {src.name} como público...")
-    with open(src, 'rb') as file_data:
-        s3_client.upload_fileobj(
-            file_data,
-            bucket_name,
-            object_key,
-            ExtraArgs={
-                'ContentType': 'video/mp4',
-                'ACL': 'public-read'
-            }
-        )
-    
-    # 공개 URL 생성
-    public_url = f"https://{bucket_name}.{os.environ['DO_SPACES_REGION']}.digitaloceanspaces.com/{object_key}"
-    
-    print(f"✅ Upload exitoso!")
-    print(f"🌐 URL pública: {public_url}")
-    
-    return public_url
+# DigitalOcean Spaces 업로드 함수 제거됨
+# 이제 비디오를 base64로 인코딩하여 직접 반환합니다
 
 def save_base64_image(base64_string, filename):
     """base64 이미지를 파일 시스템에 저장"""
@@ -184,7 +150,7 @@ def modify_workflow(workflow: dict, image_filename: str, prompt: str, negative_p
     
     return modified_workflow
 
-def execute_workflow(job_id, workflow):
+def execute_workflow(workflow):
     """ComfyUI에서 워크플로우 실행 및 결과 대기"""
     try:
         prompt_id = str(uuid.uuid4())
@@ -219,7 +185,7 @@ def execute_workflow(job_id, workflow):
                     
                     if "outputs" in execution_data:
                         print("✅ Workflow execution completed!")
-                        return extract_output_files(job_id, execution_data["outputs"])
+                        return extract_output_files(execution_data["outputs"])
                     
                     elif "status" in execution_data:
                         status = execution_data["status"]
@@ -240,8 +206,18 @@ def execute_workflow(job_id, workflow):
         print(f"❌ Error executing workflow: {e}")
         raise Exception(f"Failed to execute workflow: {e}")
 
-def extract_output_files(job_id, outputs):
-    """출력 파일 추출 및 DigitalOcean에 업로드"""
+def encode_video_to_base64(file_path):
+    """비디오 파일을 base64로 인코딩"""
+    try:
+        with open(file_path, 'rb') as video_file:
+            encoded = base64.b64encode(video_file.read()).decode('utf-8')
+            return encoded
+    except Exception as e:
+        print(f"❌ Error encoding video: {e}")
+        raise Exception(f"Failed to encode video: {e}")
+
+def extract_output_files(outputs):
+    """출력 파일 추출 및 base64로 인코딩하여 반환"""
     for node_id, node_output in outputs.items():
         if str(node_id) != TARGET_NODE:
             continue
@@ -258,21 +234,29 @@ def extract_output_files(job_id, outputs):
                 raise FileNotFoundError(f"Video file not found: {src}")
 
             try:
-                print(f"🚀 Subiendo {src.name}...")
-                video_url = upload_video_to_digitalocean(src, job_id)
+                print(f"📹 Encoding video to base64: {src.name}...")
+                file_size_mb = round(src.stat().st_size / 1_048_576, 2)
+                
+                # 파일 크기 확인 (RunPod 제한 고려)
+                if file_size_mb > 50:  # 50MB 제한
+                    print(f"⚠️ Warning: Video file is {file_size_mb}MB, which may be too large for base64 response")
+                
+                # base64로 인코딩
+                video_base64 = encode_video_to_base64(src)
                 
                 return {
                     "type": "video",
-                    "url": video_url,
+                    "format": "mp4",
+                    "data": video_base64,
                     "filename": src.name,
                     "original_path": str(src),
-                    "file_size": f"{round(src.stat().st_size / 1_048_576, 2)} MB",
+                    "file_size": f"{file_size_mb} MB",
                     "node_id": TARGET_NODE
                 }
                 
             except Exception as e:
-                print(f"❌ Error uploading video: {e}")
-                raise RuntimeError(f"Failed to upload video: {e}")
+                print(f"❌ Error processing video: {e}")
+                raise RuntimeError(f"Failed to process video: {e}")
 
     raise RuntimeError(f"No video output found in node {TARGET_NODE}")
 
@@ -292,12 +276,12 @@ def generate_video(job_id, input_image, prompt, negative_prompt="", width=832, h
         modified_workflow = modify_workflow(workflow, saved_filename, prompt, negative_prompt, width, height)
         
         # 3. 워크플로우 실행
-        output_data = execute_workflow(job_id, modified_workflow)
+        output_data = execute_workflow(modified_workflow)
         
-        if not output_data or "url" not in output_data:
+        if not output_data or "data" not in output_data:
             raise Exception("No video output generated")
         
-        print(f"✅ Video generation completed. URL: {output_data['url']}")
+        print(f"✅ Video generation completed. Size: {output_data['file_size']}")
         
         return {
             "status": "success",
