@@ -14,8 +14,8 @@ RUN mkdir -p \
 # Download WAN 2.1 models
 RUN echo "=== Downloading WAN 2.1 models ===" && \
     wget --timeout=600 --tries=3 --user-agent="Mozilla/5.0" -c \
-    -O "/comfyui/models/diffusion_models/wan2.1_i2v_480p_14B_bf16.safetensors" \
-    "https://huggingface.co/Comfy-Org/Wan_2.1_ComfyUI_repackaged/resolve/main/split_files/diffusion_models/wan2.1_i2v_480p_14B_bf16.safetensors"
+    -O "/comfyui/models/diffusion_models/wan2.1_i2v_720p_14B_bf16.safetensors" \
+    "https://huggingface.co/Comfy-Org/Wan_2.1_ComfyUI_repackaged/resolve/main/split_files/diffusion_models/wan2.1_i2v_720p_14B_bf16.safetensors"
 
 RUN wget --timeout=600 --tries=3 --user-agent="Mozilla/5.0" -c \
     -O "/comfyui/models/text_encoders/umt5_xxl_fp8_e4m3fn_scaled.safetensors" \

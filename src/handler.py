@@ -118,7 +118,7 @@ def process_image_input(image_input):
         print(f"❌ Error processing image: {e}")
         raise Exception(f"Failed to process image: {e}")
 
-def modify_workflow(workflow: dict, image_filename: str, prompt: str, negative_prompt: str, width: int = 832, height: int = 480, video_length: float = 4.0) -> dict:
+def modify_workflow(workflow: dict, image_filename: str, prompt: str, negative_prompt: str, width: int = 1280, height: int = 720, video_length: float = 4.0) -> dict:
     """사용자 매개변수로 워크플로우 수정"""
     # 고유한 시드 생성
     unique_seed = int(time.time() * 1000000) % 2147483647
@@ -267,7 +267,7 @@ def extract_output_files(outputs):
 
     raise RuntimeError(f"No video output found in node {TARGET_NODE}")
 
-def generate_video(job_id, input_image, prompt, negative_prompt="", width=832, height=480, video_length=4.0):
+def generate_video(job_id, input_image, prompt, negative_prompt="", width=1280, height=720, video_length=4.0):
     """전체 워크플로우를 사용한 비디오 생성"""
     try:
         print("🎬 Starting video generation...")
@@ -305,7 +305,7 @@ def generate_video(job_id, input_image, prompt, negative_prompt="", width=832, h
 def check_models():
     """모델 가용성 확인"""
     required_models = {
-        "diffusion_models": ["wan2.1_i2v_480p_14B_bf16.safetensors"],
+        "diffusion_models": ["wan2.1_i2v_720p_14B_bf16.safetensors"],
         "text_encoders": ["umt5_xxl_fp8_e4m3fn_scaled.safetensors"],
         "vae": ["wan_2.1_vae.safetensors"],
         "clip_vision": ["clip_vision_h.safetensors"],
@@ -401,8 +401,8 @@ def handler(event):
             job_input.get("image", ""),
             job_input.get("prompt", ""),
             job_input.get("negative_prompt", ""),
-            job_input.get("width", 832),
-            job_input.get("height", 480),
+            job_input.get("width", 1280),
+            job_input.get("height", 720),
             job_input.get("video_length", 4.0)
         )
         
